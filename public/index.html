@@ -26,10 +26,14 @@
   </script>
   <link rel="stylesheet" href="/css/tailwind.min.css?v=433b4379">
   <style>
-    /* 强制解除页眉区域横向滚动限制，允许标签换行 */
+    /* 强制解除页眉区域滚动限制，允许标签换行并自动撑开高度 */
     header .overflow-x-auto {
         flex-wrap: wrap !important;
-        overflow-x: visible !important;
+        overflow: visible !important; /* 彻底解除横向和纵向的溢出隐藏 */
+        height: auto !important;      /* 废掉原有的固定高度，让换行标签自己撑开盒子 */
+        max-height: none !important;
+        padding-bottom: 15px !important; /* 底部留出呼吸空间，防止被下方元素贴脸紧逼 */
+        gap: 10px !important; /* 增加上下左右的间距，别挤成一团 */
     }
     /* 取消强制单行显示 */
     header .whitespace-nowrap {
