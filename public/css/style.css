@@ -753,3 +753,20 @@ html:not(.dark) .dropdown-item.active {
     border-top: 1px solid rgba(255,255,255,0.1) !important;
   }
 }
+/* ===== 修复 tabs/导航换行问题 ===== */
+
+header .flex,
+.nav-container {
+  flex-wrap: wrap !important;
+}
+
+/* 按钮高度自适应 */
+.nav-btn {
+  height: auto !important;
+  min-height: 2.5rem;
+}
+
+/* 防止被裁剪 */
+header {
+  overflow: visible !important;
+}
