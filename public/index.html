@@ -25,6 +25,17 @@
     }
   </script>
   <link rel="stylesheet" href="/css/tailwind.min.css?v=433b4379">
+  <style>
+    /* 强制解除页眉区域横向滚动限制，允许标签换行 */
+    header .overflow-x-auto {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+    }
+    /* 取消强制单行显示 */
+    header .whitespace-nowrap {
+        white-space: normal !important;
+    }
+  </style>
 </head>
 <body class="bg-secondary-50 font-sans text-gray-800">
   <!-- SVG sprite: 高频复用图标在此定义一次，卡片等处通过 <use href="#icon-xxx"/> 引用 -->
