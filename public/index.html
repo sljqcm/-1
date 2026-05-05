@@ -25,31 +25,6 @@
     }
   </script>
   <link rel="stylesheet" href="/css/tailwind.min.css?v=433b4379">
-<style>
-    /* 终极核弹级拆除：无差别践踏 Header 内所有元素的防溢出限制 */
-    header, 
-    header * {
-        overflow: visible !important;
-    }
-    
-    /* 强行剥夺所有子容器的死高度，打断单行枷锁 */
-    header div, 
-    header ul, 
-    header nav,
-    header span {
-        height: auto !important;
-        max-height: none !important;
-        white-space: normal !important;
-    }
-    
-    /* 针对所有的 Flex 布局强制换行并拉开间距，防止贴脸 */
-    header .flex, 
-    header [class*="flex"] {
-        flex-wrap: wrap !important;
-        gap: 12px !important;
-        padding-bottom: 5px !important;
-    }
-  </style>
 </head>
 <body class="bg-secondary-50 font-sans text-gray-800">
   <!-- SVG sprite: 高频复用图标在此定义一次，卡片等处通过 <use href="#icon-xxx"/> 引用 -->
