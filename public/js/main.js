@@ -517,12 +517,12 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Initial check
-    //setTimeout(checkOverflow, 100);
-    //window.addEventListener('resize', () => {
-    //  // Debounce
-    //  clearTimeout(window.resizeTimer);
-    //  window.resizeTimer = setTimeout(checkOverflow, 100);
-    //});
+    setTimeout(checkOverflow, 100);
+    window.addEventListener('resize', () => {
+      // Debounce
+      clearTimeout(window.resizeTimer);
+      window.resizeTimer = setTimeout(checkOverflow, 100);
+    });
 
     // Toggle Dropdown
     moreBtn.addEventListener('click', (e) => {
