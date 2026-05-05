@@ -26,20 +26,29 @@
   </script>
   <link rel="stylesheet" href="/css/tailwind.min.css?v=433b4379">
   <style>
-    /* 强制解除页眉区域滚动限制，允许标签换行并自动撑开高度 */
-    header .overflow-x-auto {
-        flex-wrap: wrap !important;
-        overflow: visible !important; /* 彻底解除横向和纵向的溢出隐藏 */
-        height: auto !important;      /* 废掉原有的固定高度，让换行标签自己撑开盒子 */
-        max-height: none !important;
-        padding-bottom: 15px !important; /* 底部留出呼吸空间，防止被下方元素贴脸紧逼 */
-        gap: 10px !important; /* 增加上下左右的间距，别挤成一团 */
-    }
-    /* 取消强制单行显示 */
-    header .whitespace-nowrap {
-        white-space: normal !important;
-    }
-  </style>
+    /* 第一步：强拆主管道和所有支管的高度限制，让容器被内容自然撑开 */
+    header, 
+    header div {
+        height: auto !important;
+        min-height: fit-content !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+  
+    /* 第二步：确保所有横向 Flex 排版全部允许换行，并拉开上下间距防止贴脸 */
+    header .flex, 
+    header [class*="flex"] {
+        flex-wrap: wrap !important;
+        row-gap: 12px !important;
+        column-gap: 8px !important;
+    }
+  
+    /* 第三步：斩断一切强制文本单行的枷锁 */
+    header .whitespace-nowrap,
+    header [class*="whitespace-nowrap"] {
+        white-space: normal !important;
+    }
+  </style>
 </head>
 <body class="bg-secondary-50 font-sans text-gray-800">
   <!-- SVG sprite: 高频复用图标在此定义一次，卡片等处通过 <use href="#icon-xxx"/> 引用 -->
