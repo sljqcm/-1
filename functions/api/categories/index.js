@@ -1,34 +1,40 @@
 // functions/api/categories/index.js
-import { isAdminAuthenticated, errorResponse, jsonResponse, normalizeSortOrder } from '../../_middleware';
+import { isAdminAuthenticated, isSubmissionEnabled, errorResponse, jsonResponse } from '../../_middleware';
+import { parsePagination } from '../../lib/utils';
 
 export async function onRequestGet(context) {
   const { request, env } = context;
+  const url = new URL(request.url);
+  const isPublicScope = url.searchParams.get('scope') === 'public';
 
-  // Note: This API is currently protected. If it is needed for public "Add Site", it should be public or have a public variant.
-  // Assuming Admin usage for now.
-  if (!(await isAdminAuthenticated(request, env))) {
-    // Check if it's a request from the "Add Site" modal (visitor).
-    // If we want to allow visitors to see categories, we should remove this check or make it conditional.
-    // For now, I will keep it as is, but if the user wants public submission to work, this might need change.
-    // But the task is about "Multi-level Menu", which is SSR.
+  const isAuthenticated = await isAdminAuthenticated(request, env);
+
+  if ((!isAuthenticated || isPublicScope) && !isSubmissionEnabled(env)) {
     return errorResponse('Unauthorized', 401);
   }
-  const url = new URL(request.url);
-  const page = parseInt(url.searchParams.get('page') || '1', 10);
-  const pageSize = parseInt(url.searchParams.get('pageSize') || '10', 10);
-  const offset = (page - 1) * pageSize;
+
+  const shouldShowPublicOnly = isPublicScope || !isAuthenticated;
+  const maxPageSize = shouldShowPublicOnly ? 1000 : 10000;
+  const { page, pageSize, offset } = parsePagination(url.searchParams, { maxPageSize });
 
   try {
+    const categoryFilter = shouldShowPublicOnly ? 'WHERE c.is_private = 0' : '';
+    const countFilter = shouldShowPublicOnly ? 'WHERE is_private = 0' : '';
+    const siteJoin = shouldShowPublicOnly
+      ? 'LEFT JOIN sites s ON c.id = s.catelog_id AND s.is_private = 0'
+      : 'LEFT JOIN sites s ON c.id = s.catelog_id';
+
     const { results } = await env.NAV_DB.prepare(`
         SELECT c.id, c.catelog, c.sort_order, c.parent_id, c.is_private, COUNT(s.id) AS site_count
         FROM category c
-        LEFT JOIN sites s ON c.id = s.catelog_id
-        GROUP BY c.id, c.catelog, c.sort_order, c.parent_id
+        ${siteJoin}
+        ${categoryFilter}
+        GROUP BY c.id, c.catelog, c.sort_order, c.parent_id, c.is_private
         ORDER BY c.sort_order ASC, c.create_time DESC
         LIMIT ? OFFSET ?
       `).bind(pageSize, offset).all();
     const countResult = await env.NAV_DB.prepare(`
-      SELECT COUNT(*) as total FROM category
+      SELECT COUNT(*) as total FROM category ${countFilter}
     `).first();
 
     const total = countResult ? countResult.total : 0;

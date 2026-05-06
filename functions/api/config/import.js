@@ -1,5 +1,6 @@
 // functions/api/config/import.js
 import { isAdminAuthenticated, errorResponse, jsonResponse, normalizeSortOrder, markHomeCacheDirty } from '../../_middleware';
+import { getUrlMatchCandidates, normalizeUrlForStorage } from '../../lib/utils';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -174,15 +175,22 @@ export async function onRequestPost(context) {
     }
 
     // --- Site Processing ---
-    const siteUrls = sitesToImport.map(item => (item.url || '').trim()).filter(url => url);
-    const existingSiteUrls = new Set();
+    const siteUrls = [...new Set(sitesToImport.flatMap(item => {
+        const rawUrl = (item.url || '').trim();
+        return getUrlMatchCandidates(rawUrl);
+    }))];
+    const existingSiteUrlMap = new Map();
     if (siteUrls.length > 0) {
         for (let i = 0; i < siteUrls.length; i += BATCH_SIZE) {
             const chunk = siteUrls.slice(i, i + BATCH_SIZE);
             const placeholders = chunk.map(() => '?').join(',');
             const { results: existingSites } = await db.prepare(`SELECT url FROM sites WHERE url IN (${placeholders})`).bind(...chunk).all();
             if (existingSites) {
-                existingSites.forEach(site => existingSiteUrls.add(site.url));
+                existingSites.forEach(site => {
+                    const dbUrl = (site.url || '').trim();
+                    if (dbUrl) existingSiteUrlMap.set(dbUrl, dbUrl);
+                    getUrlMatchCandidates(dbUrl).forEach(candidate => existingSiteUrlMap.set(candidate, dbUrl));
+                });
             }
         }
     }
@@ -194,10 +202,11 @@ export async function onRequestPost(context) {
     const iconAPI = env.ICON_API || 'https://faviconsnap.com/api/favicon?url=';
 
     for (const site of sitesToImport) {
-        const sanitizedUrl = (site.url || '').trim();
+        const rawUrl = (site.url || '').trim();
+        const sanitizedUrl = normalizeUrlForStorage(rawUrl);
         const sanitizedName = (site.name || '').trim();
 
-        if (!sanitizedUrl || !sanitizedName) {
+        if (!rawUrl || !sanitizedUrl || !sanitizedName) {
             itemsSkipped++;
             continue;
         }
@@ -206,7 +215,10 @@ export async function onRequestPost(context) {
             continue;
         }
 
-        const exists = existingSiteUrls.has(sanitizedUrl);
+        const existingDbUrl = getUrlMatchCandidates(rawUrl)
+            .map(candidate => existingSiteUrlMap.get(candidate))
+            .find(Boolean) || null;
+        const exists = Boolean(existingDbUrl);
         if (exists && !override) {
             itemsSkipped++;
             continue;
@@ -259,7 +271,7 @@ export async function onRequestPost(context) {
             // Update
             batchStmts.push(
                 db.prepare('UPDATE sites SET name=?, logo=?, desc=?, catelog_id=?, catelog_name=?, sort_order=?, is_private=?, update_time=CURRENT_TIMESTAMP WHERE url=?')
-                  .bind(sanitizedName, sanitizedLogo, sanitizedDesc, newCatId, catNameForDb, sortOrderValue, finalIsPrivate, sanitizedUrl)
+                  .bind(sanitizedName, sanitizedLogo, sanitizedDesc, newCatId, catNameForDb, sortOrderValue, finalIsPrivate, existingDbUrl)
             );
             itemsUpdated++;
         } else {

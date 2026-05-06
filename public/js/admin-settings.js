@@ -1382,9 +1382,10 @@ const initSettings = () => {
     shouldStopBulkGeneration = false;
   }
 
-  // --- Individual AI Generation (Add/Edit) ---
+  // --- Individual AI Generation (Add/Edit/Review) ---
   const addBookmarkAiBtn = document.getElementById('addBookmarkAiBtn');
   const editBookmarkAiBtn = document.getElementById('editBookmarkAiBtn');
+  const reviewPendingAiBtn = document.getElementById('reviewPendingAiBtn');
 
   async function handleSingleGenerate(nameInputId, urlInputId, descInputId, btnId, modalId) {
     const name = document.getElementById(nameInputId).value.trim();
@@ -1433,6 +1434,12 @@ const initSettings = () => {
   if (editBookmarkAiBtn) {
     editBookmarkAiBtn.addEventListener('click', () => {
       handleSingleGenerate('editBookmarkName', 'editBookmarkUrl', 'editBookmarkDesc', 'editBookmarkAiBtn', 'editBookmarkModal');
+    });
+  }
+
+  if (reviewPendingAiBtn) {
+    reviewPendingAiBtn.addEventListener('click', () => {
+      handleSingleGenerate('reviewPendingName', 'reviewPendingUrl', 'reviewPendingDesc', 'reviewPendingAiBtn', 'reviewPendingModal');
     });
   }
 };

@@ -1,6 +1,6 @@
 // functions/api/config/index.js
 import { isAdminAuthenticated, errorResponse, jsonResponse, normalizeSortOrder, markHomeCacheDirty } from '../../_middleware';
-import { escapeLikePattern, buildFaviconUrl } from '../../lib/utils';
+import { escapeLikePattern, buildFaviconUrl, getUrlMatchCandidates, normalizeUrlForStorage, parsePagination } from '../../lib/utils';
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -8,10 +8,8 @@ export async function onRequestGet(context) {
   const url = new URL(request.url);
   const catalog = url.searchParams.get('catalog');
   const catalogId = url.searchParams.get('catalogId');
-  const page = parseInt(url.searchParams.get('page') || '1', 10);
-  const pageSize = Math.min(parseInt(url.searchParams.get('pageSize') || '10', 10), 200);
+  const { page, pageSize, offset } = parsePagination(url.searchParams, { maxPageSize: 200 });
   const keyword = url.searchParams.get('keyword');
-  const offset = (page - 1) * pageSize;
 
   const isAuthenticated = await isAdminAuthenticated(request, env);
   const includePrivate = isAuthenticated ? 1 : 0;
@@ -71,18 +69,25 @@ export async function onRequestPost(context) {
     const iconAPI = env.ICON_API || 'https://faviconsnap.com/api/favicon?url=';
 
     const sanitizedName = (name || '').trim();
-    const sanitizedUrl = (url || '').trim();
+    const rawUrl = (url || '').trim();
+    const sanitizedUrl = normalizeUrlForStorage(rawUrl);
     let sanitizedLogo = (logo || '').trim() || null;
     const sanitizedDesc = (desc || '').trim() || null;
     const sortOrderValue = normalizeSortOrder(sort_order);
     const isPrivateValue = is_private ? 1 : 0;
 
-    if (!sanitizedName || !sanitizedUrl || !catelogId) {
+    if (!sanitizedName || !rawUrl || !catelogId) {
       return errorResponse('Name, URL and Catelog are required', 400);
     }
 
+    if (!sanitizedUrl) {
+      return errorResponse('URL must be a valid http or https URL', 400);
+    }
+
     // Check if URL already exists
-    const existingSite = await env.NAV_DB.prepare('SELECT id FROM sites WHERE url = ?').bind(sanitizedUrl).first();
+    const urlCandidates = getUrlMatchCandidates(rawUrl);
+    const placeholders = urlCandidates.map(() => '?').join(',');
+    const existingSite = await env.NAV_DB.prepare(`SELECT id FROM sites WHERE url IN (${placeholders})`).bind(...urlCandidates).first();
     if (existingSite) {
         return errorResponse('该 URL 已存在，请勿重复添加', 409);
     }

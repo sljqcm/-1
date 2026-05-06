@@ -1,6 +1,6 @@
 // functions/api/config/[id].js
 import { isAdminAuthenticated, errorResponse, jsonResponse, normalizeSortOrder, markHomeCacheDirty } from '../../_middleware';
-import { buildFaviconUrl } from '../../lib/utils';
+import { buildFaviconUrl, getUrlMatchCandidates, normalizeUrlForStorage } from '../../lib/utils';
 
 
 export async function onRequestGet(context) {
@@ -41,25 +41,42 @@ export async function onRequestPut(context) {
     const { name, url, logo, desc, catelog_id, sort_order, is_private } = config;
 
     const sanitizedName = (name || '').trim();
-    const sanitizedUrl = (url || '').trim();
+    const rawUrl = (url || '').trim();
+    const sanitizedUrl = normalizeUrlForStorage(rawUrl);
     let sanitizedLogo = (logo || '').trim() || null;
     const sanitizedDesc = (desc || '').trim() || null;
     const sortOrderValue = normalizeSortOrder(sort_order);
     const isPrivateValue = is_private ? 1 : 0;
 
-    if (!sanitizedName || !sanitizedUrl || !catelog_id) {
+    if (!sanitizedName || !rawUrl || !catelog_id) {
       return errorResponse('Name, URL and Catelog are required', 400);
     }
+    if (!sanitizedUrl) {
+      return errorResponse('URL must be a valid http or https URL', 400);
+    }
+
+    const urlCandidates = getUrlMatchCandidates(rawUrl);
+    const placeholders = urlCandidates.map(() => '?').join(',');
+    const duplicate = await env.NAV_DB.prepare(`SELECT id FROM sites WHERE url IN (${placeholders}) AND id != ?`)
+      .bind(...urlCandidates, id)
+      .first();
+    if (duplicate) {
+      return errorResponse('该 URL 已存在，请勿重复添加', 409);
+    }
+
     const iconAPI = env.ICON_API || 'https://faviconsnap.com/api/favicon?url=';
     sanitizedLogo = buildFaviconUrl(sanitizedUrl, sanitizedLogo, iconAPI);
 
     // Fetch category name
     const categoryResult = await env.NAV_DB.prepare('SELECT catelog, is_private FROM category WHERE id = ?').bind(catelog_id).first();
-    const catelogName = categoryResult ? categoryResult.catelog : 'Unknown';
+    if (!categoryResult) {
+      return errorResponse('Category not found.', 400);
+    }
+    const catelogName = categoryResult.catelog;
 
     // If category is private, force site to be private
     let finalIsPrivate = isPrivateValue;
-    if (categoryResult && categoryResult.is_private === 1) {
+    if (categoryResult.is_private === 1) {
         finalIsPrivate = 1;
     }
 

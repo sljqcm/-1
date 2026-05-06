@@ -122,6 +122,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ========== 模态框控制 ==========
   const addSiteModal = document.getElementById('addSiteModal');
   const addSiteBtnSidebar = document.getElementById('addSiteBtnSidebar');
+  const addSiteBtnHorizontal = document.getElementById('addSiteBtnHorizontal');
   const closeModalBtn = document.getElementById('closeModal');
   const cancelAddSite = document.getElementById('cancelAddSite');
   const addSiteForm = document.getElementById('addSiteForm');
@@ -140,33 +141,77 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let cachedCategories = null;
 
+  function buildCategoryTree(categories) {
+    const map = new Map();
+    const roots = [];
+
+    categories.forEach(category => {
+      map.set(category.id, { ...category, children: [] });
+    });
+
+    categories.forEach(category => {
+      const node = map.get(category.id);
+      if (category.parent_id && map.has(category.parent_id)) {
+        map.get(category.parent_id).children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    const sortNodes = (nodes) => {
+      nodes.sort((a, b) => {
+        const orderA = Number(a.sort_order);
+        const orderB = Number(b.sort_order);
+        const safeOrderA = Number.isFinite(orderA) ? orderA : 9999;
+        const safeOrderB = Number.isFinite(orderB) ? orderB : 9999;
+        return safeOrderA - safeOrderB || a.id - b.id;
+      });
+      nodes.forEach(node => sortNodes(node.children));
+    };
+    sortNodes(roots);
+
+    return roots;
+  }
+
+  function flattenCategoryOptions(nodes, depth = 0, options = []) {
+    nodes.forEach(node => {
+      const prefix = depth > 0 ? `${'　'.repeat(depth)}└─ ` : '';
+      options.push({ id: node.id, label: `${prefix}${node.catelog}` });
+      if (node.children?.length) flattenCategoryOptions(node.children, depth + 1, options);
+    });
+    return options;
+  }
+
+  function renderCategoryOptions(selectElement, categoryOptions) {
+    selectElement.innerHTML = '<option value="" disabled selected>请选择一个分类</option>';
+    if (categoryOptions.length === 0) {
+      selectElement.innerHTML = '<option value="" disabled>暂无可投稿分类</option>';
+      return;
+    }
+
+    categoryOptions.forEach(category => {
+      const option = document.createElement('option');
+      option.value = category.id;
+      option.textContent = category.label;
+      selectElement.appendChild(option);
+    });
+  }
+
   async function fetchCategoriesForSelect() {
     const selectElement = document.getElementById('addSiteCatelog');
     if (!selectElement) return;
 
     if (cachedCategories) {
-      selectElement.innerHTML = '<option value="" disabled selected>请选择一个分类</option>';
-      cachedCategories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category.id;
-        option.textContent = category.catelog;
-        selectElement.appendChild(option);
-      });
+      renderCategoryOptions(selectElement, cachedCategories);
       return;
     }
 
     try {
-      const response = await fetch('/api/categories?pageSize=999');
+      const response = await fetch('/api/categories?scope=public&pageSize=1000');
       const data = await response.json();
       if (data.code === 200 && data.data) {
-        cachedCategories = data.data;
-        selectElement.innerHTML = '<option value="" disabled selected>请选择一个分类</option>';
-        data.data.forEach(category => {
-          const option = document.createElement('option');
-          option.value = category.id;
-          option.textContent = category.catelog;
-          selectElement.appendChild(option);
-        });
+        cachedCategories = flattenCategoryOptions(buildCategoryTree(data.data));
+        renderCategoryOptions(selectElement, cachedCategories);
       } else {
         selectElement.innerHTML = '<option value="" disabled>无法加载分类</option>';
       }
@@ -176,11 +221,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  addSiteBtnSidebar?.addEventListener('click', (e) => {
+  [addSiteBtnSidebar, addSiteBtnHorizontal].forEach(btn => btn?.addEventListener('click', (e) => {
     e.preventDefault();
     openModal();
     fetchCategoriesForSelect();
-  });
+  }));
 
   closeModalBtn?.addEventListener('click', closeModal);
   cancelAddSite?.addEventListener('click', closeModal);
@@ -660,24 +705,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     sites.forEach((site, index) => {
-      const safeName = escapeHTML(site.name || '未命名');
-      const safeUrl = normalizeUrl(site.url);
+      const rawName = site.name || '未命名';
+      const safeName = escapeHTML(rawName);
+      const normalizedUrl = sanitizeHttpUrl(site.url);
+      const safeUrl = escapeHTML(normalizedUrl);
       const safeDesc = escapeHTML(site.desc || '暂无描述');
       const safeCatalog = escapeHTML(site.catelog_name || site.catelog || '未分类');
-      const cardInitial = (safeName.charAt(0) || '站').toUpperCase();
+      const safeDisplayUrl = escapeHTML(normalizedUrl || '未提供链接');
+      const logoUrl = sanitizeHttpUrl(site.logo);
+      const cardInitial = escapeHTML((rawName.trim().charAt(0) || '站').toUpperCase());
 
       const isAboveFold = index < 8;
       const imgLoadingAttrs = isAboveFold ? 'fetchpriority="high" decoding="async"' : 'loading="lazy" decoding="async"';
-      const logoHtml = site.logo
-        ? `<img src="${escapeHTML(site.logo)}" alt="${safeName}" width="40" height="40" class="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700" ${imgLoadingAttrs}>`
+      const logoHtml = logoUrl
+        ? `<img src="${escapeHTML(logoUrl)}" alt="${safeName}" width="40" height="40" class="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700" ${imgLoadingAttrs}>`
         : `<div class="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center text-white font-semibold text-lg shadow-inner">${cardInitial}</div>`;
 
       const descHtml = hideDesc ? '' : `<p class="mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2" title="${safeDesc}">${safeDesc}</p>`;
 
-      const hasValidUrl = !!safeUrl;
+      const hasValidUrl = !!normalizedUrl;
       const linksHtml = hideLinks ? '' : `
           <div class="mt-3 flex items-center justify-between">
-            <span class="text-xs text-primary-600 dark:text-primary-400 truncate flex-1 min-w-0 mr-2" title="${safeUrl}">${safeUrl || '未提供链接'}</span>
+            <span class="text-xs text-primary-600 dark:text-primary-400 truncate flex-1 min-w-0 mr-2" title="${safeDisplayUrl}">${safeDisplayUrl}</span>
             <button class="copy-btn relative flex items-center px-2 py-1 ${hasValidUrl ? 'bg-accent-100 text-accent-700 hover:bg-accent-200 dark:bg-accent-900/30 dark:text-accent-300 dark:hover:bg-accent-900/50' : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'} rounded-full text-xs font-medium transition-colors" data-url="${safeUrl}" ${hasValidUrl ? '' : 'disabled'}>
               <svg class="h-3 w-3 ${isFiveCols || isSixCols ? '' : 'mr-1'}"><use href="#icon-copy"/></svg>
               ${isFiveCols || isSixCols ? '' : '<span class="copy-text">复制</span>'}
@@ -714,7 +763,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       card.innerHTML = `
         <div class="site-card-content">
-          <a href="${safeUrl}" ${hasValidUrl ? 'target="_blank" rel="noopener noreferrer"' : ''} class="block">
+          <a href="${safeUrl || '#'}" ${hasValidUrl ? 'target="_blank" rel="noopener noreferrer"' : ''} class="block">
             <div class="flex items-start">
               <div class="site-icon flex-shrink-0 mr-4 transition-all duration-300">
                 ${logoHtml}
@@ -834,10 +883,16 @@ document.addEventListener('DOMContentLoaded', function () {
     return String(str).replace(/[&<>"']/g, c => _ESC[c]);
   }
 
-  function normalizeUrl(url) {
+  function sanitizeHttpUrl(url) {
     if (!url) return '';
-    if (url.startsWith('http')) return url;
-    return 'https://' + url;
+    const trimmed = String(url).trim();
+    if (!/^https?:\/\//i.test(trimmed)) return '';
+    try {
+      const parsed = new URL(trimmed);
+      return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? parsed.href : '';
+    } catch {
+      return '';
+    }
   }
 
   // Auto-restore Last Category

@@ -1,5 +1,46 @@
 
 import { isAdminAuthenticated, errorResponse, jsonResponse, markHomeCacheDirty } from '../_middleware';
+import { getSettingsKeys, normalizeSettingValueForStorage } from '../lib/settings-parser';
+import { sanitizeUrl } from '../lib/utils';
+
+const LAYOUT_SETTING_KEYS = new Set(getSettingsKeys());
+const AI_SETTING_KEYS = new Set(['provider', 'apiKey', 'baseUrl', 'model']);
+const IGNORED_SETTING_KEYS = new Set(['has_api_key', 'debug_api_key_info']);
+const ALLOWED_PROVIDERS = new Set(['workers-ai', 'gemini', 'openai']);
+
+function normalizeAiSettingValue(key, value) {
+  const text = String(value ?? '').trim();
+
+  if (key === 'provider') {
+    return ALLOWED_PROVIDERS.has(text)
+      ? { ok: true, value: text }
+      : { ok: false, message: 'Invalid provider' };
+  }
+
+  if (key === 'baseUrl') {
+    if (!text) return { ok: true, value: '' };
+    const safeUrl = sanitizeUrl(text);
+    return safeUrl
+      ? { ok: true, value: safeUrl.replace(/\/+$/, '') }
+      : { ok: false, message: 'Invalid baseUrl' };
+  }
+
+  if (key === 'model') {
+    if (text.length > 200 || /[\u0000-\u001f\u007f]/.test(text)) {
+      return { ok: false, message: 'Invalid model' };
+    }
+    return { ok: true, value: text };
+  }
+
+  if (key === 'apiKey') {
+    if (text.length > 4096 || /[\u0000-\u001f\u007f]/.test(text)) {
+      return { ok: false, message: 'Invalid apiKey' };
+    }
+    return { ok: true, value: text };
+  }
+
+  return { ok: false, message: `Unknown setting key: ${key}` };
+}
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -16,7 +57,11 @@ export async function onRequestGet(context) {
     if (results) {
       results.forEach(row => {
         // 忽略后端计算字段或调试字段，防止数据库脏数据覆盖
-        if (row.key === 'has_api_key' || row.key === 'debug_api_key_info') {
+        if (IGNORED_SETTING_KEYS.has(row.key)) {
+          return;
+        }
+
+        if (!LAYOUT_SETTING_KEYS.has(row.key) && !AI_SETTING_KEYS.has(row.key)) {
           return;
         }
 
@@ -62,7 +107,7 @@ export async function onRequestPost(context) {
     const body = await request.json();
     const settings = body; // Expecting object { key: value, key2: value2 }
 
-    if (!settings || typeof settings !== 'object') {
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
       return errorResponse('Invalid settings data', 400);
     }
 
@@ -84,9 +129,22 @@ export async function onRequestPost(context) {
     const batch = [];
     for (const [key, value] of Object.entries(settings)) {
       // 不要保存临时字段
-      if (key === 'has_api_key' || key === 'debug_api_key_info') continue;
+      if (IGNORED_SETTING_KEYS.has(key)) continue;
 
-      batch.push(stmt.bind(key, String(value)));
+      let normalized;
+      if (LAYOUT_SETTING_KEYS.has(key)) {
+        normalized = normalizeSettingValueForStorage(key, value);
+      } else if (AI_SETTING_KEYS.has(key)) {
+        normalized = normalizeAiSettingValue(key, value);
+      } else {
+        return errorResponse(`Invalid setting key: ${key}`, 400);
+      }
+
+      if (!normalized.ok) {
+        return errorResponse(normalized.message, 400);
+      }
+
+      batch.push(stmt.bind(key, normalized.value));
     }
 
     if (batch.length > 0) {

@@ -8,7 +8,7 @@
   <link rel="icon" href="/favicon.svg?v=148aafdf" type="image/svg+xml">
   <link rel="stylesheet" href="/css/admin.css?v=77f37983" />
   <link rel="stylesheet" href="/css/admin-dropdown.css?v=9efddb85" />
-  <link rel="stylesheet" href="/css/tailwind.min.css?v=433b4379">
+  <link rel="stylesheet" href="/css/tailwind.min.css?v=efb4406a">
 </head>
 
 <body>
@@ -352,6 +352,63 @@
               class="w-24 h-10 m-0 flex items-center justify-center bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-sm font-medium transition-colors">取消</button>
             <button type="submit"
               class="w-24 h-10 !mt-0 m-0 flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 审核投稿模态框 -->
+    <div id="reviewPendingModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span class="modal-close" id="closeReviewPendingModal">×</span>
+        <h2>审核投稿</h2>
+        <form id="reviewPendingForm">
+          <input type="hidden" name="id" id="reviewPendingId" />
+          <div class="form-group">
+            <label for="reviewPendingName">名称:</label>
+            <input type="text" name="name" id="reviewPendingName" required />
+          </div>
+          <div class="form-group">
+            <label for="reviewPendingUrl">URL:</label>
+            <input type="text" name="url" id="reviewPendingUrl" required />
+          </div>
+          <div class="form-group">
+            <label for="reviewPendingLogo">Logo(可选):</label>
+            <input type="text" name="logo" id="reviewPendingLogo" placeholder="默认自动根据url获取" />
+          </div>
+          <div class="form-group">
+            <label for="reviewPendingDesc">描述(可选):</label>
+            <input type="text" name="desc" id="reviewPendingDesc" />
+            <button type="button" id="reviewPendingAiBtn" class="ai-generate-btn" title="AI 生成描述">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                  d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+              </svg>
+            </button>
+          </div>
+          <div class="form-group">
+            <label for="reviewPendingCatelog">分类:</label>
+            <div id="reviewPendingCatelogWrapper" class="custom-dropdown-wrapper w-full"></div>
+            <input type="hidden" id="reviewPendingCatelog" name="catelog_id" required>
+          </div>
+          <div class="form-group">
+            <label for="reviewPendingSortOrder">排序值(可选):</label>
+            <input type="number" name="sort_order" id="reviewPendingSortOrder" placeholder="9999" />
+          </div>
+          <div class="form-group flex items-center justify-between">
+            <label for="reviewPendingIsPrivate"
+              class="cursor-pointer select-none text-gray-700 font-medium">私密书签:</label>
+            <label class="switch">
+              <input type="checkbox" name="is_private" id="reviewPendingIsPrivate">
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="flex flex-row justify-end gap-3 mt-6">
+            <button type="button" id="cancelReviewPendingBtn"
+              class="w-24 h-10 m-0 flex items-center justify-center bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-sm font-medium transition-colors">取消</button>
+            <button type="submit"
+              class="w-24 h-10 !mt-0 m-0 flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors">通过</button>
           </div>
         </form>
       </div>
@@ -717,7 +774,7 @@
                 <div class="flex-1">
                   <label class="text-xs text-gray-500 block mb-1">颜色</label>
                   <div class="flex gap-1 h-[34px]">
-                    <input type="color" id="homeTitleColorPicker"
+                    <input type="color" id="cardTitleColorPicker"
                       class="h-full w-8 cursor-pointer border-0 p-0 rounded overflow-hidden">
                     <input type="text" id="cardTitleColor" placeholder="#111827"
                       class="flex-1 text-sm p-1 border rounded h-full min-w-0">
@@ -975,12 +1032,12 @@
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Name</th>
+                <th>名称</th>
                 <th>URL</th>
-                <th>Logo</th>
-                <th>Description</th>
-                <th>Catelog</th>
-                <th>Actions</th>
+                <th>图标</th>
+                <th>描述</th>
+                <th>分类</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody id="pendingTableBody">
@@ -1152,11 +1209,11 @@
   </div>
 
   <script src="/js/admin-cache.js?v=7b8faa7b"></script>
-  <script src="/js/admin.js?v=cc414aa0"></script>
+  <script src="/js/admin.js?v=fb1dc0bb"></script>
   <script src="/js/admin-categories.js?v=6ac61962"></script>
   <script src="/js/admin-bookmarks.js?v=050f96b1"></script>
   <script src="/js/admin-batch.js?v=30d922a5"></script>
-  <script src="/js/admin-settings.js?v=e8e58a06"></script>
+  <script src="/js/admin-settings.js?v=bfd5f32e"></script>
   <script src="/js/admin-import-export.js?v=43a1de60"></script>
 </body>
 

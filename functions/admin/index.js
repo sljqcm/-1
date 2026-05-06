@@ -1,6 +1,6 @@
 // functions/admin/index.js
 
-import { isAdminAuthenticated, getSessionToken } from '../_middleware';
+import { buildSessionCookie, isAdminAuthenticated, getSessionToken } from '../_middleware';
 
 // GET: 显示管理页面或重定向到登录
 export async function onRequestGet(context) {
@@ -34,7 +34,15 @@ export async function onRequestGet(context) {
         headers.set('Cache-Control', 'no-store');
         return new Response(html, { headers });
       }
-      return response;
+
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `/admin/login?error=${encodeURIComponent('登录状态已过期，请重新登录')}`,
+          'Set-Cookie': buildSessionCookie('', { maxAge: 0 }),
+          'Cache-Control': 'no-store',
+        },
+      });
     } else {
       console.error('Failed to load admin HTML:', response.status);
       return new Response('管理页面加载失败', { status: 500 });

@@ -1,5 +1,6 @@
 // functions/api/pending/index.js
 import { isAdminAuthenticated, errorResponse, jsonResponse } from '../../_middleware';
+import { parsePagination } from '../../lib/utils';
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -9,9 +10,7 @@ export async function onRequestGet(context) {
   }
 
   const url = new URL(request.url);
-  const page = parseInt(url.searchParams.get('page') || '1', 10);
-  const pageSize = Math.min(parseInt(url.searchParams.get('pageSize') || '10', 10), 200);
-  const offset = (page - 1) * pageSize;
+  const { page, pageSize, offset } = parsePagination(url.searchParams, { maxPageSize: 200 });
 
   try {
     const { results } = await env.NAV_DB.prepare(`

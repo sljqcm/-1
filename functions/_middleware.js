@@ -259,15 +259,13 @@ export async function clearLoginFailures(env, ip) {
 
 /**
  * 校验 CSRF token（Synchronizer Token Pattern）
- * 旧 session（KV 中无 csrf_ 记录）自动放行，保持向后兼容
  */
 export async function validateCsrfToken(request, env) {
   const sessionToken = getSessionToken(request);
   if (!sessionToken) return { valid: false };
 
   const storedToken = await env.NAV_AUTH.get(`csrf_${sessionToken}`);
-  // 旧 session 兼容：KV 无记录则放行
-  if (!storedToken) return { valid: true };
+  if (!storedToken) return { valid: false };
 
   const headerToken = request.headers.get('X-CSRF-Token');
   if (!headerToken) return { valid: false };
