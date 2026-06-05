@@ -35,6 +35,13 @@
 
   const loadedFonts = new Set();
   let initialized = false;
+  const CARD_ANIMATION_TYPES = ['slideUp', 'radial', 'fadeIn', 'slideLeft', 'slideRight', 'convergeIn', 'flipIn'];
+  const CARD_ANIMATION_CLASSES = CARD_ANIMATION_TYPES.map(type => `preview-card-anim-${type}`);
+  const REDUCED_MOTION_QUERY = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+
+  function prefersReducedMotion() {
+    return REDUCED_MOTION_QUERY?.matches === true;
+  }
 
   function getRefs() {
     return ns.core?.getRefs?.() || {};
@@ -183,6 +190,95 @@
     if (preview2) preview2.style.maxWidth = width;
   }
 
+  function getVisiblePreviewCard() {
+    const preview1 = document.getElementById('cardStyle1PreviewContainer');
+    const preview2 = document.getElementById('cardStyle2PreviewContainer');
+    const container = preview2 && !preview2.classList.contains('hidden') ? preview2 : preview1;
+    return container?.querySelector('.site-card') || null;
+  }
+
+  function resolvePreviewAnimation() {
+    const refs = getRefs();
+    const selected = refs.cardAnimationSelect?.value || getCurrentSettings().layout_card_animation || 'radial';
+    if (selected === 'random') {
+      return CARD_ANIMATION_TYPES[Math.floor(Math.random() * CARD_ANIMATION_TYPES.length)];
+    }
+    return CARD_ANIMATION_TYPES.includes(selected) ? selected : 'radial';
+  }
+
+  function triggerPreviewAnimation() {
+    const card = getVisiblePreviewCard();
+    if (!card) return;
+
+    cleanupPreviewAnimation(card);
+
+    const animation = resolvePreviewAnimation();
+    if (animation === 'convergeIn') {
+      card.style.setProperty('--preview-card-anim-x', '-80px');
+      card.style.setProperty('--preview-card-anim-y', '0');
+    }
+
+    void card.offsetWidth;
+    card.classList.add('preview-card-anim-enter', `preview-card-anim-${animation}`);
+
+    if (prefersReducedMotion()) {
+      cleanupPreviewAnimation(card);
+      return;
+    }
+
+    let isCleaned = false;
+    let isCleanupScheduled = false;
+    let fallbackTimer = null;
+
+    const cleanup = () => {
+      if (isCleaned) return;
+      isCleaned = true;
+      cleanupPreviewAnimation(card);
+      card.removeEventListener('animationend', handleAnimationEnd);
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+    };
+
+    const finish = () => {
+      if (isCleaned || isCleanupScheduled) return;
+      isCleanupScheduled = true;
+      const cleanupDelay = card.classList.contains('preview-card-anim-flipIn') ? 140 : 0;
+      if (cleanupDelay > 0) {
+        window.setTimeout(cleanup, cleanupDelay);
+      } else {
+        cleanup();
+      }
+    };
+
+    const handleAnimationEnd = (event) => {
+      if (event.target !== card) return;
+      finish();
+    };
+
+    fallbackTimer = window.setTimeout(cleanup, 900);
+    card.addEventListener('animationend', handleAnimationEnd);
+  }
+
+  function cleanupPreviewAnimation(card) {
+    card.classList.add('preview-card-anim-cleanup');
+    CARD_ANIMATION_CLASSES.forEach(className => card.classList.remove(className));
+    card.classList.remove('preview-card-anim-enter');
+    card.style.removeProperty('--preview-card-anim-x');
+    card.style.removeProperty('--preview-card-anim-y');
+    window.requestAnimationFrame(() => {
+      card.classList.remove('preview-card-anim-cleanup');
+    });
+  }
+
+  function syncAnimationOptions() {
+    const refs = getRefs();
+    const selected = refs.cardAnimationSelect?.value || 'radial';
+    document.querySelectorAll('.card-animation-option').forEach(option => {
+      const isActive = option.dataset.animation === selected;
+      option.classList.toggle('active', isActive);
+      option.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
   function selectCardStyle(style) {
     const currentSettings = getCurrentSettings();
     currentSettings.layout_card_style = style;
@@ -194,20 +290,20 @@
 
     if (!btn1 || !btn2 || !preview1 || !preview2) return;
 
-    btn1.className = 'card-style-btn px-4 py-1 text-sm rounded transition-all';
-    btn2.className = 'card-style-btn px-4 py-1 text-sm rounded transition-all';
+    btn1.className = 'card-style-btn card-segment-option';
+    btn2.className = 'card-style-btn card-segment-option';
 
     if (style === 'style2') {
-      btn2.classList.add('bg-white', 'shadow-sm', 'text-gray-800', 'font-medium');
-      btn1.classList.add('text-gray-600', 'hover:text-gray-900');
+      btn2.classList.add('active');
       preview1.classList.add('hidden');
       preview2.classList.remove('hidden');
     } else {
-      btn1.classList.add('bg-white', 'shadow-sm', 'text-gray-800', 'font-medium');
-      btn2.classList.add('text-gray-600', 'hover:text-gray-900');
+      btn1.classList.add('active');
       preview1.classList.remove('hidden');
       preview2.classList.add('hidden');
     }
+
+    requestAnimationFrame(triggerPreviewAnimation);
   }
 
   function bindPreviewEvents() {
@@ -219,6 +315,21 @@
 
     document.getElementById('btnStyle1')?.addEventListener('click', () => selectCardStyle('style1'));
     document.getElementById('btnStyle2')?.addEventListener('click', () => selectCardStyle('style2'));
+    document.querySelectorAll('.card-animation-option').forEach(option => {
+      option.addEventListener('click', () => {
+        if (!refs.cardAnimationSelect) return;
+        refs.cardAnimationSelect.value = option.dataset.animation || 'radial';
+        getCurrentSettings().layout_card_animation = refs.cardAnimationSelect.value;
+        syncAnimationOptions();
+        triggerPreviewAnimation();
+      });
+    });
+
+    refs.cardAnimationSelect?.addEventListener('change', () => {
+      getCurrentSettings().layout_card_animation = refs.cardAnimationSelect.value || 'radial';
+      syncAnimationOptions();
+      triggerPreviewAnimation();
+    });
 
     refs.hideDescSwitch?.addEventListener('change', updatePreviewCards);
     refs.hideLinksSwitch?.addEventListener('change', updatePreviewCards);
@@ -256,6 +367,7 @@
     initialized = true;
     populateFontSelects();
     bindPreviewEvents();
+    syncAnimationOptions();
   }
 
   ns.preview = {
@@ -264,5 +376,7 @@
     updatePreviewCards,
     updatePreviewWidth,
     selectCardStyle,
+    triggerPreviewAnimation,
+    syncAnimationOptions,
   };
 })();

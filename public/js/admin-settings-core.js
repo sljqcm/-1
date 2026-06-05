@@ -44,6 +44,7 @@
     'wallpaper_source',
     'wallpaper_cid_360',
     'layout_card_style',
+    'layout_card_animation',
     'layout_card_border_radius',
     'card_title_font',
     'card_title_size',
@@ -75,7 +76,7 @@
       home_hide_hitokoto: false,
       home_hitokoto_size: '',
       home_hitokoto_color: '',
-      home_hide_github: false,
+      home_hide_github: true,
       home_hide_admin: false,
       home_search_engine_enabled: false,
       home_default_category: '',
@@ -97,6 +98,7 @@
       wallpaper_source: 'bing',
       wallpaper_cid_360: '36',
       layout_card_style: 'style1',
+      layout_card_animation: 'radial',
       layout_card_border_radius: '12',
       card_title_font: '',
       card_title_size: '',
@@ -172,6 +174,7 @@
       cardTitleSizeInput: document.getElementById('cardTitleSize'),
       cardTitleColorInput: document.getElementById('cardTitleColor'),
       cardTitleColorPicker: document.getElementById('cardTitleColorPicker'),
+      cardAnimationSelect: document.getElementById('cardAnimationSelect'),
       cardDescFontInput: document.getElementById('cardDescFont'),
       cardDescSizeInput: document.getElementById('cardDescSize'),
       cardDescColorInput: document.getElementById('cardDescColor'),
@@ -359,6 +362,7 @@
 
     currentSettings.layout_enable_frosted_glass = !!refs.frostedGlassSwitch?.checked;
     currentSettings.layout_frosted_glass_intensity = refs.frostedGlassIntensityRange?.value || '15';
+    currentSettings.layout_card_animation = refs.cardAnimationSelect?.value || 'radial';
     currentSettings.layout_card_border_radius = refs.cardRadiusInput?.value || '12';
     currentSettings.card_title_font = refs.cardTitleFontInput?.value.trim() || '';
     currentSettings.card_title_size = refs.cardTitleSizeInput?.value.trim() || '';
@@ -479,6 +483,8 @@
     setValue(refs.bingCountrySelect, currentSettings.bing_country || '');
     setRadioValue(refs.gridColsRadios, currentSettings.layout_grid_cols);
     setRadioValue(refs.menuLayoutRadios, currentSettings.layout_menu_layout);
+    setValue(refs.cardAnimationSelect, currentSettings.layout_card_animation || 'radial');
+    ns.preview?.syncAnimationOptions?.();
     setRangeValue(refs.cardRadiusInput, refs.cardRadiusValue, currentSettings.layout_card_border_radius || '12');
     setValue(refs.cardTitleFontInput, currentSettings.card_title_font || '');
     setValue(refs.cardTitleSizeInput, currentSettings.card_title_size || '16');

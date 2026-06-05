@@ -464,6 +464,7 @@ export async function onRequest(context) {
     hideCategory: S.layout_hide_category,
     gridCols: S.layout_grid_cols,
     cardStyle: S.layout_card_style,
+    cardAnimation: S.layout_card_animation,
     enableFrostedGlass: S.layout_enable_frosted_glass,
     rememberLastCategory: S.home_remember_last_category,
     // 当前 SSR 已渲染的分类（用于前端 Auto-restore 判断是否可跳过重绘）

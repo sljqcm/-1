@@ -536,6 +536,234 @@ tr:nth-child(even) {
 
 
 
+.card-option-panel {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.card-option-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.card-option-label {
+  width: 5rem;
+  flex: 0 0 5rem;
+  color: #374151;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.card-layout-options,
+.card-style-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.card-layout-option {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.card-animation-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(5.5rem, 1fr));
+  gap: 0.25rem;
+  width: 25rem;
+  max-width: 100%;
+}
+
+.card-segment-option,
+.card-animation-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.5rem;
+  min-height: 32px;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.35);
+  color: #4b5563;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.card-segment-option:hover,
+.card-animation-option:hover {
+  border-color: #93c5fd;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.card-segment-option:focus-visible,
+.card-layout-option input:focus-visible + .card-segment-option,
+.card-animation-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+}
+
+.card-segment-option.active,
+.card-layout-option input:checked + .card-segment-option,
+.card-animation-option.active {
+  border-color: #0b66d8;
+  background: #0d7df2;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(13, 125, 242, 0.28);
+}
+
+.card-animation-control {
+  max-width: 38rem;
+}
+
+.card-option-panel .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.preview-card-anim-enter {
+  animation-duration: 0.6s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  backface-visibility: hidden;
+  transition: none !important;
+  will-change: opacity, transform;
+}
+
+.preview-card-anim-cleanup {
+  transition: none !important;
+}
+
+.preview-card-anim-slideUp { animation-name: previewCardSlideUpIn; animation-duration: 0.6s; }
+.preview-card-anim-radial { animation-name: previewCardRadialIn; animation-duration: 0.5s; }
+.preview-card-anim-fadeIn { animation-name: previewCardFadeIn; animation-duration: 0.6s; }
+.preview-card-anim-slideLeft { animation-name: previewCardSlideLeftIn; animation-duration: 0.6s; }
+.preview-card-anim-slideRight { animation-name: previewCardSlideRightIn; animation-duration: 0.6s; }
+.preview-card-anim-convergeIn { animation-name: previewCardConvergeIn; animation-duration: 0.7s; }
+.preview-card-anim-flipIn {
+  animation-name: previewCardFlipIn;
+  animation-duration: 0.68s;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.25, 1);
+  perspective: 900px;
+  transform-origin: center;
+  transform-style: preserve-3d;
+}
+
+.preview-card-anim-flipIn.frosted-glass-effect {
+  animation-name: previewCardFrostedFlipIn;
+}
+
+@keyframes previewCardSlideUpIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes previewCardRadialIn {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes previewCardFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes previewCardSlideLeftIn {
+  from { opacity: 0; transform: translateX(-50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes previewCardSlideRightIn {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes previewCardConvergeIn {
+  from {
+    opacity: 0;
+    transform: translate(var(--preview-card-anim-x, -56px), var(--preview-card-anim-y, 0));
+  }
+  to { opacity: 1; transform: translate(0, 0); }
+}
+
+@keyframes previewCardFlipIn {
+  0% { opacity: 0; transform: perspective(900px) rotateY(-82deg); }
+  30% { opacity: 0.6; transform: perspective(900px) rotateY(-45deg); }
+  55% { opacity: 0.86; transform: perspective(900px) rotateY(-24deg); }
+  75% { opacity: 1; transform: perspective(900px) rotateY(-11deg); }
+  90% { opacity: 1; transform: perspective(900px) rotateY(-4deg); }
+  100% { opacity: 1; transform: perspective(900px) rotateY(0deg); }
+}
+
+@keyframes previewCardFrostedFlipIn {
+  0% { opacity: 0; transform: perspective(900px) rotateY(-82deg); }
+  16% { opacity: 1; transform: perspective(900px) rotateY(-82deg); }
+  34% { opacity: 1; transform: perspective(900px) rotateY(-45deg); }
+  58% { opacity: 1; transform: perspective(900px) rotateY(-24deg); }
+  78% { opacity: 1; transform: perspective(900px) rotateY(-11deg); }
+  92% { opacity: 1; transform: perspective(900px) rotateY(-4deg); }
+  100% { opacity: 1; transform: perspective(900px) rotateY(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-card-anim-enter {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .card-option-panel {
+    display: flex;
+    width: 100%;
+  }
+
+  .card-option-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .card-option-label,
+  .card-animation-control {
+    width: 100%;
+    max-width: none;
+    flex-basis: auto;
+  }
+
+  .card-animation-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .card-animation-option {
+    min-width: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
 /* AI 设置模态框样式 */
 #aiSettingsBtn {
   background-color: #28a745; /* 绿色，表示 AI 或智能操作 */
@@ -596,7 +824,7 @@ tr:nth-child(even) {
   padding: 0;
   border: 1px solid #dee2e6;
   width: 90%;
-  max-width: 550px;
+  max-width: 620px;
   border-radius: 12px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
   display: flex;
@@ -1219,6 +1447,3 @@ body.modal-open {
   margin-bottom: 0;
   overflow: auto !important;
 }
-
-
-

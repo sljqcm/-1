@@ -22,7 +22,7 @@ export const SETTINGS_SCHEMA = {
     home_hide_hitokoto: { default: false, type: 'bool' },
     home_hitokoto_size: { default: '', type: 'string' },
     home_hitokoto_color: { default: '', type: 'string' },
-    home_hide_github: { default: false, type: 'boolOrOne' },
+    home_hide_github: { default: true, type: 'boolOrOne' },
     home_hide_admin: { default: false, type: 'boolOrOne' },
     home_custom_font_url: { default: '', type: 'string' },
     home_title_font: { default: '', type: 'string' },
@@ -43,6 +43,7 @@ export const SETTINGS_SCHEMA = {
     layout_enable_bg_blur: { default: false, type: 'bool' },
     layout_bg_blur_intensity: { default: '0', type: 'string' },
     layout_card_style: { default: 'style1', type: 'string' },
+    layout_card_animation: { default: 'radial', type: 'string' },
     layout_card_border_radius: { default: '12', type: 'string' },
     wallpaper_source: { default: 'bing', type: 'string' },
     wallpaper_cid_360: { default: '36', type: 'string' },
@@ -172,6 +173,10 @@ export function normalizeSettingValueForStorage(key, value) {
 
     if (key === 'layout_card_style' && !['style1', 'style2'].includes(text)) {
         return { ok: false, message: 'Invalid layout_card_style' };
+    }
+
+    if (key === 'layout_card_animation' && !['radial', 'slideUp', 'fadeIn', 'slideLeft', 'slideRight', 'convergeIn', 'flipIn', 'random'].includes(text)) {
+        return { ok: false, message: 'Invalid layout_card_animation' };
     }
 
     if (key === 'wallpaper_source' && !['bing', '360'].includes(text)) {

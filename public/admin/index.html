@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>书签管理页面</title>
   <link rel="icon" href="/favicon.svg?v=148aafdf" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/admin.css?v=77f37983" />
+  <link rel="stylesheet" href="/css/admin.css?v=b5d848ea" />
   <link rel="stylesheet" href="/css/admin-dropdown.css?v=9efddb85" />
-  <link rel="stylesheet" href="/css/tailwind.min.css?v=efb4406a">
+  <link rel="stylesheet" href="/css/tailwind.min.css?v=087714da">
 </head>
 
 <body>
@@ -659,36 +659,65 @@
 
 
             <div class="p-2 hover:bg-gray-50 rounded">
-              <label class="block text-gray-700 font-medium mb-2">卡片布局 (大屏一行显示)</label>
-              <div class="flex gap-4">
-                <label class="inline-flex items-center cursor-pointer">
-                  <input type="radio" name="gridCols" value="4" class="form-radio text-primary-600">
-                  <span class="ml-2">4 列</span>
-                </label>
-                <label class="inline-flex items-center cursor-pointer">
-                  <input type="radio" name="gridCols" value="5" class="form-radio text-primary-600">
-                  <span class="ml-2">5 列</span>
-                </label>
-                <label class="inline-flex items-center cursor-pointer">
-                  <input type="radio" name="gridCols" value="6" class="form-radio text-primary-600">
-                  <span class="ml-2">6 列</span>
-                </label>
-                <label class="inline-flex items-center cursor-pointer">
-                  <input type="radio" name="gridCols" value="7" class="form-radio text-primary-600">
-                  <span class="ml-2">7 列</span>
-                </label>
-              </div>
-            </div>
-            <div class="p-2 hover:bg-gray-50 rounded">
-              <div class="flex items-center mb-4">
-                <label class="block text-gray-700 font-medium mr-4">卡片风格</label>
-                <div class="flex bg-gray-200 rounded p-1">
-                  <button type="button" id="btnStyle1"
-                    class="card-style-btn px-4 py-1 text-sm rounded transition-all bg-white shadow-sm text-gray-800 font-medium"
-                    data-style="style1">风格一</button>
-                  <button type="button" id="btnStyle2"
-                    class="card-style-btn px-4 py-1 text-sm rounded transition-all text-gray-600 hover:text-gray-900"
-                    data-style="style2">风格二</button>
+              <div class="card-option-panel">
+                <div class="card-option-row">
+                  <label class="card-option-label">卡片布局</label>
+                  <div class="card-layout-options">
+                    <label class="card-layout-option">
+                      <input type="radio" name="gridCols" value="4" class="sr-only">
+                      <span class="card-segment-option">4 列</span>
+                    </label>
+                    <label class="card-layout-option">
+                      <input type="radio" name="gridCols" value="5" class="sr-only">
+                      <span class="card-segment-option">5 列</span>
+                    </label>
+                    <label class="card-layout-option">
+                      <input type="radio" name="gridCols" value="6" class="sr-only">
+                      <span class="card-segment-option">6 列</span>
+                    </label>
+                    <label class="card-layout-option">
+                      <input type="radio" name="gridCols" value="7" class="sr-only">
+                      <span class="card-segment-option">7 列</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="card-option-row">
+                  <label class="card-option-label">卡片风格</label>
+                  <div class="card-style-options">
+                    <button type="button" id="btnStyle1"
+                      class="card-style-btn card-segment-option active"
+                      data-style="style1">风格一</button>
+                    <button type="button" id="btnStyle2"
+                      class="card-style-btn card-segment-option"
+                      data-style="style2">风格二</button>
+                  </div>
+                </div>
+
+                <div class="card-option-row">
+                  <label for="cardAnimationSelect" class="card-option-label">切换动画</label>
+                  <div class="card-animation-control">
+                    <select id="cardAnimationSelect" class="sr-only">
+                      <option value="radial">中心扩散</option>
+                      <option value="slideUp">向上滑入</option>
+                      <option value="fadeIn">淡入</option>
+                      <option value="slideLeft">左侧滑入</option>
+                      <option value="slideRight">右侧滑入</option>
+                      <option value="convergeIn">两侧汇聚</option>
+                      <option value="flipIn">翻转进入</option>
+                      <option value="random">随机动画</option>
+                    </select>
+                    <div class="card-animation-options" role="group" aria-label="切换动画">
+                      <button type="button" class="card-animation-option" data-animation="radial">中心扩散</button>
+                      <button type="button" class="card-animation-option" data-animation="slideUp">向上滑入</button>
+                      <button type="button" class="card-animation-option" data-animation="fadeIn">淡入</button>
+                      <button type="button" class="card-animation-option" data-animation="slideLeft">左侧滑入</button>
+                      <button type="button" class="card-animation-option" data-animation="slideRight">右侧滑入</button>
+                      <button type="button" class="card-animation-option" data-animation="convergeIn">两侧汇聚</button>
+                      <button type="button" class="card-animation-option" data-animation="flipIn">翻转进入</button>
+                      <button type="button" class="card-animation-option" data-animation="random">随机动画</button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1213,8 +1242,8 @@
   <script src="/js/admin-categories.js?v=6ac61962"></script>
   <script src="/js/admin-bookmarks.js?v=050f96b1"></script>
   <script src="/js/admin-batch.js?v=30d922a5"></script>
-  <script src="/js/admin-settings-core.js?v=99401db8"></script>
-  <script src="/js/admin-settings-preview.js?v=6e863f0e"></script>
+  <script src="/js/admin-settings-core.js?v=ff7f636f"></script>
+  <script src="/js/admin-settings-preview.js?v=eacff726"></script>
   <script src="/js/admin-settings-wallpaper.js?v=28fcbd74"></script>
   <script src="/js/admin-settings-ai.js?v=96643057"></script>
   <script src="/js/admin-settings.js?v=3d60c17b"></script>

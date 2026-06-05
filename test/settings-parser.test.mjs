@@ -8,8 +8,9 @@ test('parseSettings applies documented defaults', () => {
 
   assert.equal(settings.layout_grid_cols, '4');
   assert.equal(settings.layout_menu_layout, 'horizontal');
+  assert.equal(settings.layout_card_animation, 'radial');
   assert.equal(settings.layout_hide_desc, false);
-  assert.equal(settings.home_hide_github, false);
+  assert.equal(settings.home_hide_github, true);
 });
 
 test('parseSettings converts stored boolean strings consistently', () => {
@@ -19,6 +20,7 @@ test('parseSettings converts stored boolean strings consistently', () => {
     { key: 'home_hide_github', value: '1' },
     { key: 'home_hide_admin', value: 'true' },
     { key: 'layout_grid_cols', value: '6' },
+    { key: 'layout_card_animation', value: 'flipIn' },
   ]);
 
   assert.equal(settings.layout_hide_desc, true);
@@ -26,6 +28,7 @@ test('parseSettings converts stored boolean strings consistently', () => {
   assert.equal(settings.home_hide_github, true);
   assert.equal(settings.home_hide_admin, true);
   assert.equal(settings.layout_grid_cols, '6');
+  assert.equal(settings.layout_card_animation, 'flipIn');
 });
 
 test('getSettingsKeys matches parseable setting fields', () => {
@@ -33,6 +36,7 @@ test('getSettingsKeys matches parseable setting fields', () => {
 
   assert.ok(keys.includes('layout_custom_wallpaper'));
   assert.ok(keys.includes('home_default_category'));
+  assert.ok(keys.includes('layout_card_animation'));
   assert.ok(keys.includes('card_desc_color'));
   assert.equal(new Set(keys).size, keys.length);
 });
@@ -44,5 +48,8 @@ test('normalizeSettingValueForStorage validates style and enum settings', () => 
   assert.deepEqual(normalizeSettingValueForStorage('card_desc_color', 'null'), { ok: true, value: '' });
   assert.equal(normalizeSettingValueForStorage('home_title_color', '#fff;position:fixed').ok, false);
   assert.equal(normalizeSettingValueForStorage('layout_grid_cols', '9').ok, false);
+  assert.deepEqual(normalizeSettingValueForStorage('layout_card_animation', 'radial'), { ok: true, value: 'radial' });
+  assert.deepEqual(normalizeSettingValueForStorage('layout_card_animation', 'random'), { ok: true, value: 'random' });
+  assert.equal(normalizeSettingValueForStorage('layout_card_animation', 'bounceIn').ok, false);
   assert.equal(normalizeSettingValueForStorage('layout_custom_wallpaper', 'javascript:alert(1)').ok, false);
 });
