@@ -203,6 +203,71 @@ header {
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
+.top-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  border: 0;
+  border-radius: 9999px;
+  box-shadow: none;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.35));
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.top-action-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.top-action-icon:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.top-action-icon:focus-visible {
+  outline: 2px solid rgba(65, 109, 157, 0.55);
+  outline-offset: 3px;
+}
+
+.theme-action-icon:hover {
+  color: #d97706;
+}
+
+.admin-action-icon:hover {
+  color: #bfdbfe;
+}
+
+.dark .top-action-icon {
+  color: rgba(229, 231, 235, 0.82);
+}
+
+.dark .theme-action-icon:hover {
+  color: #fde047;
+}
+
+.dark .admin-action-icon:hover {
+  color: #93c5fd;
+}
+
+body.custom-wallpaper .top-action-icon {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+body.custom-wallpaper .theme-action-icon:hover {
+  color: #fbbf24;
+}
+
+body.custom-wallpaper .admin-action-icon:hover {
+  color: #bfdbfe;
+}
+
 .dark body.custom-wallpaper header {
     background-color: transparent !important;
 }
@@ -254,6 +319,11 @@ header {
   line-height: 1.25rem; font-weight: 500; white-space: nowrap;
   transition: all 0.2s ease; border: 1px solid transparent;
   cursor: pointer; text-decoration: none; height: 2.5rem;
+  min-width: calc(4em + 2rem);
+}
+
+#horizontalMoreBtn {
+  min-width: 2.5rem;
 }
 
 body:not(.app-ready) .nav-btn,
@@ -283,6 +353,25 @@ body:not(.app-ready) #sidebar a[href="?catalog=all"] {
 }
 .custom-wallpaper .nav-btn.active { background-color: #2563eb; color: white; }
 .dark.custom-wallpaper .nav-btn.active { background-color: #2563eb !important; color: white !important; }
+
+.horizontal-category-nav-shell.is-top {
+  padding-left: 4.5rem;
+  padding-right: 10.5rem;
+}
+
+@media (max-width: 720px) {
+  .horizontal-category-nav-shell.is-top {
+    padding-left: 3.75rem;
+    padding-right: 8.5rem;
+  }
+}
+
+@media (min-width: 1360px) {
+  .horizontal-category-nav-shell.is-top {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
 
 /* 风格一图标动画 */
 .site-card:not(.style-2) .site-icon {

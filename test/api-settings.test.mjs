@@ -111,9 +111,42 @@ test('POST /api/settings accepts the admin settings payload', async () => {
   assert.ok(savedKeys.includes('provider'));
   assert.equal(savedKeys.includes('has_api_key'), false);
   assert.equal(savedKeys.includes('layout_random_wallpaper'), false);
+  assert.ok(savedKeys.includes('home_category_flow'));
   assert.equal(settingWrites.find(call => call.params[0] === 'layout_hide_desc').params[1], 'false');
+  assert.equal(settingWrites.find(call => call.params[0] === 'home_category_flow').params[1], 'single_line');
   assert.equal(settingWrites.find(call => call.params[0] === 'provider').params[1], 'workers-ai');
   assert.equal(kv.store.has('settings_cache'), false);
+});
+
+test('POST /api/settings accepts category flow setting directly', async () => {
+  const db = createDb();
+  const kv = createKv({
+    session_token: '1',
+    settings_cache: '[cached]',
+  });
+  const request = new Request('https://example.com/api/settings', {
+    method: 'POST',
+    headers: {
+      Cookie: 'admin_session=token',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      home_category_flow: 'multi_line',
+    }),
+  });
+
+  const response = await onRequestPost({
+    request,
+    env: {
+      NAV_AUTH: kv,
+      NAV_DB: db,
+    },
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 200, body.message);
+  assert.equal(body.code, 200);
+  assert.equal(db.store.get('home_category_flow'), 'multi_line');
 });
 
 test('POST /api/settings skips unchanged writes but still invalidates caches', async () => {
@@ -151,6 +184,6 @@ test('POST /api/settings skips unchanged writes but still invalidates caches', a
   assert.equal(body.code, 200);
   assert.equal(settingWrites.length, 0);
   assert.equal(kv.store.has('settings_cache'), false);
-  assert.equal(kv.store.has('home_dirty_public_v10'), true);
-  assert.equal(kv.store.has('home_dirty_private_v10'), true);
+  assert.equal(kv.store.has('home_dirty_public_v11'), true);
+  assert.equal(kv.store.has('home_dirty_private_v11'), true);
 });
