@@ -1,6 +1,7 @@
 // functions/api/config/submit.js
 import { isSubmissionEnabled, errorResponse, jsonResponse, checkRateLimit } from '../../_middleware';
 import { normalizeUrlForStorage } from '../../lib/utils';
+import { verifyTurnstileToken } from '../../lib/turnstile';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -18,7 +19,12 @@ export async function onRequestPost(context) {
 
   try {
     const config = await request.json();
-    const { name, url, logo, desc, catelog_id } = config;
+    const { name, url, logo, desc, catelog_id, turnstileToken } = config;
+
+    const turnstileResult = await verifyTurnstileToken(turnstileToken, env, ip);
+    if (!turnstileResult.ok) {
+      return errorResponse(turnstileResult.message, 403);
+    }
 
     const sanitizedName = (name || '').trim();
     const rawUrl = (url || '').trim();

@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // 为初始 SSR 渲染的卡片设置动画延迟（已从服务端移至前端）
   const initialCards = document.querySelectorAll('.site-card.card-anim-enter');
   const sitesGrid = document.getElementById('sitesGrid');
-  const cardConfig = window.IORI_CARD_CONFIG || {
+  const defaultCardConfig = {
     hideDesc: false,
     hideLinks: false,
     hideCategory: false,
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
     cardStyleClass: '',
     titleClass: 'site-title text-base font-medium text-gray-900 dark:text-gray-100 truncate transition-all duration-300 origin-left',
     descClass: 'mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2',
-    categoryClass: 'inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-xs font-medium bg-secondary-100 text-primary-700 dark:bg-secondary-800 dark:text-primary-300',
+    categoryClass: 'site-category inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-xs font-medium bg-secondary-100 text-primary-700 dark:bg-secondary-800 dark:text-primary-300',
     linkRowClass: 'mt-3 flex items-center justify-between',
     urlTextClass: 'text-xs text-primary-600 dark:text-primary-400 truncate flex-1 min-w-0 mr-2',
     copyButtonBaseClass: 'copy-btn relative flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors',
@@ -48,9 +48,55 @@ document.addEventListener('DOMContentLoaded', function () {
     logoClass: 'w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700',
     siteIconClass: 'site-icon flex-shrink-0 mr-4 transition-all duration-300',
   };
+  const cardConfigSets = window.IORI_CARD_CONFIGS || {
+    desktop: window.IORI_CARD_CONFIG || defaultCardConfig,
+    mobile: window.IORI_CARD_CONFIG || defaultCardConfig,
+  };
   const cardAnimationTypes = ['slideUp', 'radial', 'fadeIn', 'slideLeft', 'slideRight', 'convergeIn', 'flipIn'];
   const cardAnimationClasses = cardAnimationTypes.map(type => `card-anim-${type}`);
   const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const mobileCardQuery = window.matchMedia?.('(max-width: 767px)');
+  let activeCardDevice = '';
+  let cardConfig = getActiveCardConfig();
+  let activeRenderedCatalogId = window.IORI_LAYOUT_CONFIG?.ssrCatalogId && window.IORI_LAYOUT_CONFIG.ssrCatalogId !== 'all'
+    ? String(window.IORI_LAYOUT_CONFIG.ssrCatalogId)
+    : null;
+
+  function getCardDevice() {
+    return mobileCardQuery?.matches ? 'mobile' : 'desktop';
+  }
+
+  function getActiveCardConfig() {
+    const device = getCardDevice();
+    activeCardDevice = device;
+    return cardConfigSets[device] || cardConfigSets.desktop || window.IORI_CARD_CONFIG || defaultCardConfig;
+  }
+
+  function getSitesForCatalog(catalogId) {
+    const allSites = window.IORI_SITES || [];
+    if (!catalogId) return allSites;
+    return allSites.filter(site => String(site.catelog_id) === String(catalogId));
+  }
+
+  function applyCardGridColumns() {
+    if (!sitesGrid || getCardDevice() !== 'mobile') return;
+    const cols = String(cardConfig.gridCols || '2');
+    const mobileGridClass = cols === '1' ? 'grid-cols-1' : (cols === '3' ? 'grid-cols-3' : 'grid-cols-2');
+    sitesGrid.classList.remove('grid-cols-1', 'grid-cols-2', 'grid-cols-3');
+    sitesGrid.classList.add(mobileGridClass);
+  }
+
+  function syncCardConfigForViewport(options = {}) {
+    const device = getCardDevice();
+    const nextConfig = cardConfigSets[device] || cardConfigSets.desktop || defaultCardConfig;
+    if (!options.force && device === activeCardDevice && nextConfig === cardConfig) return;
+
+    activeCardDevice = device;
+    cardConfig = nextConfig;
+    applyCardGridColumns();
+    renderSites(getSitesForCatalog(activeRenderedCatalogId));
+    reapplyLocalSearchFilter();
+  }
 
   function prefersReducedCardMotion() {
     return reducedMotionQuery?.matches === true;
@@ -71,11 +117,18 @@ document.addEventListener('DOMContentLoaded', function () {
       if (renderedCols > 0) return renderedCols;
     }
 
+    const configuredCols = String(cardConfig.gridCols || window.IORI_LAYOUT_CONFIG?.gridCols || (getCardDevice() === 'mobile' ? '2' : '4'));
     const width = window.innerWidth;
-    if (width < 768) return 2;
+    if (width < 768) {
+      const mobileCols = Number(configuredCols);
+      return Number.isFinite(mobileCols) && mobileCols > 0 ? mobileCols : 2;
+    }
     if (width < 1024) return 3;
 
-    const configuredCols = String(cardConfig.gridCols || window.IORI_LAYOUT_CONFIG?.gridCols || '4');
+    if (getCardDevice() === 'mobile') {
+      const mobileCols = Number(configuredCols);
+      return Number.isFinite(mobileCols) && mobileCols > 0 ? mobileCols : 2;
+    }
     if (configuredCols === '6') return width >= 1200 ? 6 : 5;
     if (configuredCols === '7') return width >= 1280 ? 7 : 5;
 
@@ -198,6 +251,10 @@ document.addEventListener('DOMContentLoaded', function () {
     bindCardAnimationCleanup(card);
   });
 
+  mobileCardQuery?.addEventListener('change', () => {
+    syncCardConfigForViewport();
+  });
+
   // ========== 复制链接功能 ==========
   sitesGrid?.addEventListener('click', function (e) {
     const btn = e.target.closest('.copy-btn');
@@ -274,24 +331,151 @@ document.addEventListener('DOMContentLoaded', function () {
   // ========== 模态框控制 ==========
   const addSiteModal = document.getElementById('addSiteModal');
   const addSiteBtnSidebar = document.getElementById('addSiteBtnSidebar');
-  const addSiteBtnHorizontal = document.getElementById('addSiteBtnHorizontal');
+  const addSiteBtnFloating = document.getElementById('addSiteBtnFloating');
   const closeModalBtn = document.getElementById('closeModal');
   const cancelAddSite = document.getElementById('cancelAddSite');
   const addSiteForm = document.getElementById('addSiteForm');
+  const addSiteTurnstile = document.getElementById('addSiteTurnstile');
+  let addSiteMessage = document.getElementById('addSiteMessage');
+  let publicConfigPromise = null;
+  let turnstileScriptPromise = null;
+  let submissionTurnstileSiteKey = '';
+  let submissionTurnstileWidgetId = null;
+  let renderedSubmissionTurnstileSiteKey = '';
 
   function openModal() {
     addSiteModal?.classList.remove('opacity-0', 'invisible');
     addSiteModal?.querySelector('.max-w-md')?.classList.remove('translate-y-8');
     document.body.style.overflow = 'hidden';
+    hideAddSiteMessage();
   }
 
   function closeModal() {
     addSiteModal?.classList.add('opacity-0', 'invisible');
     addSiteModal?.querySelector('.max-w-md')?.classList.add('translate-y-8');
     document.body.style.overflow = '';
+    resetSubmissionTurnstile();
   }
 
   let cachedCategories = null;
+
+  function ensureAddSiteMessage() {
+    if (addSiteMessage) return addSiteMessage;
+    if (!addSiteForm) return null;
+
+    addSiteMessage = document.createElement('div');
+    addSiteMessage.id = 'addSiteMessage';
+    addSiteMessage.className = 'hidden rounded-lg border px-3 py-2 text-sm leading-relaxed';
+
+    const actionRow = addSiteForm.querySelector('.flex.justify-end');
+    if (actionRow) {
+      addSiteForm.insertBefore(addSiteMessage, actionRow);
+    } else {
+      addSiteForm.appendChild(addSiteMessage);
+    }
+
+    return addSiteMessage;
+  }
+
+  function hideAddSiteMessage() {
+    const messageEl = ensureAddSiteMessage();
+    if (!messageEl) return;
+    messageEl.className = 'hidden rounded-lg border px-3 py-2 text-sm leading-relaxed';
+    messageEl.textContent = '';
+  }
+
+  function showAddSiteMessage(message, type = 'error') {
+    const messageEl = ensureAddSiteMessage();
+    if (!messageEl) return;
+
+    const styleMap = {
+      error: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200',
+      warning: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200',
+      info: 'border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-200',
+    };
+
+    messageEl.className = `rounded-lg border px-3 py-2 text-sm leading-relaxed ${styleMap[type] || styleMap.error}`;
+    messageEl.textContent = message;
+  }
+
+  function getPublicConfig() {
+    if (!publicConfigPromise) {
+      publicConfigPromise = fetch('/api/public-config')
+        .then(response => response.json())
+        .catch(error => {
+          console.error('Failed to fetch public config:', error);
+          return {};
+        });
+    }
+    return publicConfigPromise;
+  }
+
+  function loadTurnstileScript() {
+    if (window.turnstile) return Promise.resolve(window.turnstile);
+    if (turnstileScriptPromise) return turnstileScriptPromise;
+
+    turnstileScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve(window.turnstile);
+      script.onerror = () => reject(new Error('Turnstile script failed to load'));
+      document.head.appendChild(script);
+    });
+
+    return turnstileScriptPromise;
+  }
+
+  async function ensureSubmissionTurnstile() {
+    if (!addSiteTurnstile) return;
+
+    const config = await getPublicConfig();
+    const siteKey = String(config.turnstileSiteKey || '').trim();
+    submissionTurnstileSiteKey = siteKey;
+
+    if (!siteKey) {
+      addSiteTurnstile.classList.add('hidden');
+      addSiteTurnstile.classList.remove('flex');
+      return;
+    }
+
+    addSiteTurnstile.classList.remove('hidden');
+    addSiteTurnstile.classList.add('flex');
+
+    try {
+      const turnstile = await loadTurnstileScript();
+      if (!turnstile) throw new Error('Turnstile is unavailable');
+
+      if (submissionTurnstileWidgetId === null) {
+        addSiteTurnstile.textContent = '';
+        submissionTurnstileWidgetId = turnstile.render(addSiteTurnstile, {
+          sitekey: siteKey,
+          theme: 'auto',
+        });
+        renderedSubmissionTurnstileSiteKey = siteKey;
+      } else if (renderedSubmissionTurnstileSiteKey !== siteKey) {
+        turnstile.reset(submissionTurnstileWidgetId);
+        renderedSubmissionTurnstileSiteKey = siteKey;
+      }
+    } catch (error) {
+      console.error('Failed to load Turnstile:', error);
+      addSiteTurnstile.textContent = '人机验证加载失败，请刷新后重试';
+      addSiteTurnstile.classList.add('text-sm', 'text-red-500', 'items-center');
+    }
+  }
+
+  function getSubmissionTurnstileToken() {
+    if (!submissionTurnstileSiteKey) return '';
+    if (!window.turnstile || submissionTurnstileWidgetId === null) return '';
+    return window.turnstile.getResponse(submissionTurnstileWidgetId) || '';
+  }
+
+  function resetSubmissionTurnstile() {
+    if (window.turnstile && submissionTurnstileWidgetId !== null) {
+      window.turnstile.reset(submissionTurnstileWidgetId);
+    }
+  }
 
   function buildCategoryTree(categories) {
     const map = new Map();
@@ -373,10 +557,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  [addSiteBtnSidebar, addSiteBtnHorizontal].forEach(btn => btn?.addEventListener('click', (e) => {
+  [addSiteBtnSidebar, addSiteBtnFloating].forEach(btn => btn?.addEventListener('click', (e) => {
     e.preventDefault();
     openModal();
     fetchCategoriesForSelect();
+    ensureSubmissionTurnstile();
   }));
 
   closeModalBtn?.addEventListener('click', closeModal);
@@ -386,36 +571,48 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // ========== 表单提交 ==========
-  addSiteForm?.addEventListener('submit', function (e) {
+  addSiteForm?.addEventListener('submit', async function (e) {
     e.preventDefault();
+
+    await ensureSubmissionTurnstile();
+
+    if (submissionTurnstileSiteKey && !getSubmissionTurnstileToken()) {
+      showAddSiteMessage('请先完成人机验证，再提交书签。', 'warning');
+      return;
+    }
+
+    hideAddSiteMessage();
 
     const data = {
       name: document.getElementById('addSiteName').value,
       url: document.getElementById('addSiteUrl').value,
       logo: document.getElementById('addSiteLogo').value,
       desc: document.getElementById('addSiteDesc').value,
-      catelog_id: document.getElementById('addSiteCatelog').value
+      catelog_id: document.getElementById('addSiteCatelog').value,
+      turnstileToken: getSubmissionTurnstileToken()
     };
 
-    fetch('/api/config/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.code === 201) {
-          showToast('提交成功,等待管理员审核');
-          closeModal();
-          addSiteForm.reset();
-        } else {
-          alert(data.message || '提交失败');
-        }
-      })
-      .catch(err => {
-        console.error('网络错误:', err);
-        alert('网络错误,请稍后重试');
+    try {
+      const res = await fetch('/api/config/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
       });
+      const result = await res.json();
+
+      if (result.code === 201) {
+        showToast('提交成功,等待管理员审核');
+        closeModal();
+        addSiteForm.reset();
+      } else {
+        showAddSiteMessage(result.message || '提交失败，请稍后重试。', 'error');
+        resetSubmissionTurnstile();
+      }
+    } catch (err) {
+      console.error('网络错误:', err);
+      showAddSiteMessage('网络错误，请稍后重试。', 'error');
+      resetSubmissionTurnstile();
+    }
   });
 
   function showToast(message) {
@@ -452,6 +649,34 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   let searchDebounceTimer = null;
+
+  function getCurrentLocalSearchKeyword() {
+    if (currentSearchEngine !== 'local') return '';
+    for (const input of searchInputs) {
+      const keyword = input.value.trim();
+      if (keyword) return keyword;
+    }
+    return '';
+  }
+
+  function applyLocalSearchFilter(keyword) {
+    const normalizedKeyword = String(keyword || '').toLowerCase().trim();
+    const cached = getSearchCardCache();
+
+    cached.forEach(({ el, text }) => {
+      if (normalizedKeyword === '' || text.includes(normalizedKeyword)) {
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    });
+
+    updateHeading(normalizedKeyword);
+  }
+
+  function reapplyLocalSearchFilter() {
+    applyLocalSearchFilter(getCurrentLocalSearchKeyword());
+  }
 
   // Initialize Search Engine UI based on saved preference
   const engineOptions = document.querySelectorAll('.search-engine-option');
@@ -526,18 +751,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       clearTimeout(searchDebounceTimer);
       searchDebounceTimer = setTimeout(() => {
-        const keyword = value.toLowerCase().trim();
-        const cached = getSearchCardCache();
-
-        cached.forEach(({ el, text }) => {
-          if (keyword === '' || text.includes(keyword)) {
-            el.classList.remove('hidden');
-          } else {
-            el.classList.add('hidden');
-          }
-        });
-
-        updateHeading(keyword);
+        applyLocalSearchFilter(value);
       }, 200);
     });
 
@@ -801,6 +1015,7 @@ document.addEventListener('DOMContentLoaded', function () {
         filteredSites = allSites;
       }
 
+      activeRenderedCatalogId = catalogId ? String(catalogId) : null;
       renderSites(filteredSites);
       updateHeading(null, catalogId ? catalogName : null, filteredSites.length);
       updateNavigationState(catalogId);
@@ -836,6 +1051,8 @@ document.addEventListener('DOMContentLoaded', function () {
   function renderSites(sites) {
     const sitesGrid = document.getElementById('sitesGrid');
     if (!sitesGrid) return;
+
+    applyCardGridColumns();
 
     // 重新渲染时清除搜索缓存
     searchCardCache = null;
@@ -900,6 +1117,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       sitesGrid.appendChild(card);
     });
+  }
+
+  if (getCardDevice() === 'mobile') {
+    syncCardConfigForViewport({ force: true });
   }
 
   function updateNavigationState(catalogId) {
@@ -1022,6 +1243,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (lastId === 'all') {
           // Explicitly restore "All Categories" state
           const allSites = window.IORI_SITES || [];
+          activeRenderedCatalogId = null;
           renderSites(allSites);
           updateHeading(null, null, allSites.length);
           updateNavigationState(null);
@@ -1042,6 +1264,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const allSites = window.IORI_SITES || [];
           const filteredSites = allSites.filter(site => String(site.catelog_id) === String(lastId));
 
+          activeRenderedCatalogId = String(lastId);
           renderSites(filteredSites);
           updateHeading(null, catalogName, filteredSites.length);
           updateNavigationState(lastId);
