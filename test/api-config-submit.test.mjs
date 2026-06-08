@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { onRequestPost } from '../functions/api/config/submit.js';
+import { INPUT_LIMITS } from '../functions/lib/validators.js';
 
 function createKv(initialEntries = {}) {
   const store = new Map(Object.entries(initialEntries));
@@ -70,6 +71,52 @@ test('public submit does not expose duplicate site URL existence', async () => {
   const insertCall = runCalls.find(call => call.sql.includes('INSERT INTO pending_sites'));
   assert.ok(insertCall);
   assert.equal(insertCall.params[1], 'https://private.example.com');
+});
+
+test('public submit rejects overlong bookmark text before writing pending site', async () => {
+  const db = {
+    prepare(sql) {
+      return {
+        bind(...params) {
+          return {
+            async first() {
+              throw new Error(`Unexpected first() SQL: ${sql} ${JSON.stringify(params)}`);
+            },
+            async run() {
+              throw new Error(`Unexpected run() SQL: ${sql} ${JSON.stringify(params)}`);
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const request = new Request('https://example.com/api/config/submit', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'https://example.com',
+      'CF-Connecting-IP': '203.0.113.1',
+    },
+    body: JSON.stringify({
+      name: 'x'.repeat(INPUT_LIMITS.bookmarkName + 1),
+      url: 'https://submitted.example.com',
+      catelog_id: 1,
+    }),
+  });
+
+  const response = await onRequestPost({
+    request,
+    env: {
+      ENABLE_PUBLIC_SUBMISSION: 'true',
+      NAV_AUTH: createKv(),
+      NAV_DB: db,
+    },
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.match(body.message, /书签名称不能超过/);
 });
 
 test('public submit requires Turnstile token when configured', async () => {

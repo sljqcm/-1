@@ -136,6 +136,34 @@ test('narrow mobile CSS does not force style one cards into style two layout', (
   assert.doesNotMatch(narrowMobileBlock, /\.site-card \.site-icon/);
 });
 
+test('narrow mobile compact density styles target configured card and column combinations', () => {
+  const css = readFileSync('public/css/style.css', 'utf8');
+  const marker = '@media (max-width: 389px)';
+  const start = css.lastIndexOf(marker);
+  const blockStart = start >= 0 ? css.indexOf('{', start) : -1;
+  let depth = 0;
+  let end = css.length;
+  for (let index = blockStart; index >= 0 && index < css.length; index += 1) {
+    if (css[index] === '{') depth += 1;
+    if (css[index] === '}') depth -= 1;
+    if (depth === 0 && index > blockStart) {
+      end = index + 1;
+      break;
+    }
+  }
+  const compactThreeColumnBlock = blockStart >= 0 ? css.slice(start, end) : '';
+
+  assert.match(compactThreeColumnBlock, /#sitesGrid\.grid-cols-2\.mobile-card-style1/);
+  assert.match(compactThreeColumnBlock, /#sitesGrid\.grid-cols-3\.mobile-card-style1/);
+  assert.match(compactThreeColumnBlock, /#sitesGrid\.grid-cols-3\.mobile-card-style2/);
+  assert.doesNotMatch(compactThreeColumnBlock, /#sitesGrid\.grid-cols-2\.mobile-card-style2/);
+  assert.match(compactThreeColumnBlock, /gap: 0\.5rem/);
+  assert.match(compactThreeColumnBlock, /\.site-card-content/);
+  assert.match(compactThreeColumnBlock, /\.site-icon/);
+  assert.match(compactThreeColumnBlock, /\.site-title/);
+  assert.match(compactThreeColumnBlock, /\.site-category/);
+});
+
 test('admin mobile preview hides copy text at the same card density as the real page', () => {
   const source = readFileSync('public/js/admin-settings-preview.js', 'utf8');
   const sandbox = {

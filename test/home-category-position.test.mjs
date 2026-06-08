@@ -121,8 +121,16 @@ test('home grid uses configured mobile card columns', async () => {
     { key: 'mobile_layout_grid_cols', value: '3' },
   ]);
 
-  assert.match(oneColHtml, /id="sitesGrid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4/);
-  assert.match(threeColHtml, /id="sitesGrid" class="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4/);
+  assert.match(oneColHtml, /id="sitesGrid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 mobile-card-style2/);
+  assert.match(threeColHtml, /id="sitesGrid" class="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 mobile-card-style2/);
+});
+
+test('home grid marks the configured mobile card style', async () => {
+  const styleOneHtml = await renderHome([
+    { key: 'mobile_layout_card_style', value: 'style1' },
+  ]);
+
+  assert.match(styleOneHtml, /id="sitesGrid" class="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 mobile-card-style1/);
 });
 
 test('home card radius and frosted blur preserve zero values', async () => {

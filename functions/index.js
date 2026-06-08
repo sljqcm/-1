@@ -238,7 +238,8 @@ export async function onRequest(context) {
     if (cols === '7') return 'md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7';
     return 'md:grid-cols-3 lg:grid-cols-4';
   };
-  let gridClass = `grid ${getMobileGridClass(S.mobile_layout_grid_cols)} ${getDesktopGridClass(S.layout_grid_cols)} gap-3 sm:gap-6 justify-items-center`;
+  const mobileCardStyleClass = S.mobile_layout_card_style === 'style1' ? 'mobile-card-style1' : 'mobile-card-style2';
+  let gridClass = `grid ${getMobileGridClass(S.mobile_layout_grid_cols)} ${getDesktopGridClass(S.layout_grid_cols)} ${mobileCardStyleClass} gap-3 sm:gap-6 justify-items-center`;
 
   // === 12. 计算文本和统计信息 ===
   const headingPlainText = currentCatalogName ? `${currentCatalogName} · ${sites.length} 个书签` : `全部收藏 · ${sites.length} 个书签`;

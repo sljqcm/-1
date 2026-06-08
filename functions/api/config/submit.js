@@ -2,6 +2,7 @@
 import { isSubmissionEnabled, errorResponse, jsonResponse, checkRateLimit } from '../../_middleware';
 import { normalizeUrlForStorage } from '../../lib/utils';
 import { verifyTurnstileToken } from '../../lib/turnstile';
+import { normalizeBookmarkDesc, normalizeBookmarkLogo, normalizeBookmarkName, normalizeBookmarkUrl } from '../../lib/validators';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -26,14 +27,26 @@ export async function onRequestPost(context) {
       return errorResponse(turnstileResult.message, 403);
     }
 
-    const sanitizedName = (name || '').trim();
-    const rawUrl = (url || '').trim();
-    const sanitizedUrl = normalizeUrlForStorage(rawUrl);
-    const sanitizedLogo = (logo || '').trim() || null;
-    const sanitizedDesc = (desc || '').trim() || null;
+    const nameResult = normalizeBookmarkName(name);
+    if (!nameResult.ok) return errorResponse(nameResult.message, 400);
 
-    if (!sanitizedName || !rawUrl || !catelog_id) {
-      return errorResponse('Name, URL and Category are required', 400);
+    const urlResult = normalizeBookmarkUrl(url);
+    if (!urlResult.ok) return errorResponse(urlResult.message, 400);
+
+    const logoResult = normalizeBookmarkLogo(logo, { nullIfEmpty: true });
+    if (!logoResult.ok) return errorResponse(logoResult.message, 400);
+
+    const descResult = normalizeBookmarkDesc(desc, { nullIfEmpty: true });
+    if (!descResult.ok) return errorResponse(descResult.message, 400);
+
+    const sanitizedName = nameResult.value;
+    const rawUrl = urlResult.value;
+    const sanitizedUrl = normalizeUrlForStorage(rawUrl);
+    const sanitizedLogo = logoResult.value;
+    const sanitizedDesc = descResult.value;
+
+    if (!catelog_id) {
+      return errorResponse('Category is required', 400);
     }
     if (!sanitizedUrl) {
       return errorResponse('URL must be a valid http or https URL', 400);
