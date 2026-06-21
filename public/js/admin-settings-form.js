@@ -2,6 +2,9 @@
   const ns = window.AdminSettings = window.AdminSettings || {};
   const currentSettings = ns.currentSettings || ns.defaults?.createDefaultSettings?.() || {};
   ns.currentSettings = currentSettings;
+  const DEFAULT_WORKERS_AI_MODEL = '@cf/google/gemma-4-26b-a4b-it';
+  const DEFAULT_GEMINI_MODEL = 'gemini-1.5-flash';
+  const DEFAULT_OPENAI_MODEL = 'gpt-3.5-turbo';
 
   function getRefs() {
     return {
@@ -17,6 +20,8 @@
       apiKeyInput: document.getElementById('apiKey'),
       baseUrlInput: document.getElementById('baseUrl'),
       modelNameInput: document.getElementById('modelName'),
+      modelNameLabel: document.getElementById('modelNameLabel'),
+      modelNameHint: document.getElementById('modelNameHint'),
       hideDescSwitch: document.getElementById('hideDescSwitch'),
       hideLinksSwitch: document.getElementById('hideLinksSwitch'),
       hideCategorySwitch: document.getElementById('hideCategorySwitch'),
@@ -136,6 +141,24 @@
     } else {
       container.classList.add('opacity-50', 'pointer-events-none');
     }
+  }
+
+  function isWorkersAiModel(model) {
+    return String(model || '').trim().startsWith('@cf/');
+  }
+
+  function getModelForProvider(provider) {
+    const model = String(currentSettings.model || '').trim();
+    if (provider === 'workers-ai') {
+      return isWorkersAiModel(model) ? model : DEFAULT_WORKERS_AI_MODEL;
+    }
+    if (provider === 'gemini') {
+      return model && !isWorkersAiModel(model) ? model : DEFAULT_GEMINI_MODEL;
+    }
+    if (provider === 'openai') {
+      return model && !isWorkersAiModel(model) ? model : DEFAULT_OPENAI_MODEL;
+    }
+    return model;
   }
 
   async function loadCategoryOptions(selectElement) {
@@ -302,20 +325,29 @@
     if (provider === 'workers-ai') {
       if (refs.apiKeyInput?.parentElement) refs.apiKeyInput.parentElement.style.display = 'none';
       if (refs.baseUrlGroup) refs.baseUrlGroup.style.display = 'none';
-      if (refs.modelNameInput?.parentElement) refs.modelNameInput.parentElement.style.display = 'none';
+      if (refs.modelNameInput?.parentElement) refs.modelNameInput.parentElement.style.display = 'block';
+      setValue(refs.modelNameInput, getModelForProvider(provider));
+      refs.modelNameInput?.removeAttribute('list');
+      if (refs.modelNameInput) refs.modelNameInput.placeholder = DEFAULT_WORKERS_AI_MODEL;
+      if (refs.modelNameLabel) refs.modelNameLabel.innerHTML = '<span>✨</span> Workers AI 模型';
+      if (refs.modelNameHint) refs.modelNameHint.textContent = '需要使用 Workers AI 的 @cf/... 模型名。';
       return;
     }
 
     if (refs.apiKeyInput?.parentElement) refs.apiKeyInput.parentElement.style.display = 'block';
     if (refs.modelNameInput?.parentElement) refs.modelNameInput.parentElement.style.display = 'block';
+    refs.modelNameInput?.removeAttribute('list');
+    if (refs.modelNameLabel) refs.modelNameLabel.innerHTML = '<span>✨</span> 模型名称';
 
     if (provider === 'gemini') {
-      setValue(refs.modelNameInput, currentSettings.model || 'gemini-1.5-flash');
-      if (refs.modelNameInput) refs.modelNameInput.placeholder = 'gemini-1.5-flash';
+      setValue(refs.modelNameInput, getModelForProvider(provider));
+      if (refs.modelNameInput) refs.modelNameInput.placeholder = DEFAULT_GEMINI_MODEL;
+      if (refs.modelNameHint) refs.modelNameHint.textContent = `默认使用 ${DEFAULT_GEMINI_MODEL}。`;
       if (refs.baseUrlGroup) refs.baseUrlGroup.style.display = 'none';
     } else if (provider === 'openai') {
-      setValue(refs.modelNameInput, currentSettings.model || 'gpt-3.5-turbo');
-      if (refs.modelNameInput) refs.modelNameInput.placeholder = 'gpt-3.5-turbo';
+      setValue(refs.modelNameInput, getModelForProvider(provider));
+      if (refs.modelNameInput) refs.modelNameInput.placeholder = DEFAULT_OPENAI_MODEL;
+      if (refs.modelNameHint) refs.modelNameHint.textContent = `默认使用 ${DEFAULT_OPENAI_MODEL}，兼容服务可填写对应模型名。`;
       if (refs.baseUrlGroup) refs.baseUrlGroup.style.display = 'block';
     }
   }

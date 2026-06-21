@@ -38,9 +38,9 @@ function createStatement(sql, settingsRows) {
   };
 }
 
-async function renderHome(settingsRows = [], envOverrides = {}) {
+async function renderHome(settingsRows = [], envOverrides = {}, requestUrl = 'https://example.com/?render-test=1') {
   const response = await onRequest({
-    request: new Request('https://example.com/?render-test=1'),
+    request: new Request(requestUrl),
     env: {
       ASSETS: {
         async fetch() {
@@ -92,6 +92,22 @@ test('home category navigation defaults below the search box', async () => {
   assert.equal(html.includes('justify-center'), true);
   assert.equal(html.includes('horizontal-category-nav-shell is-top'), false);
   assert.equal(html.includes('id="horizontalMoreWrapper"'), true);
+});
+
+test('home category links use IDs and SSR accepts category ID query', async () => {
+  const html = await renderHome([], {}, 'https://example.com/?catalog=1');
+
+  assert.match(html, /href="\?catalog=1"/);
+  assert.match(html, /data-active="工具"/);
+  assert.match(html, /工具 · 1 个书签/);
+  assert.doesNotMatch(html, /href="\?catalog=%E5%B7%A5%E5%85%B7"/);
+});
+
+test('home category query ignores category names', async () => {
+  const html = await renderHome([], {}, 'https://example.com/?catalog=%E5%B7%A5%E5%85%B7');
+
+  assert.match(html, /data-active=""/);
+  assert.match(html, /全部收藏 · 1 个书签/);
 });
 
 test('home page does not render the retired GitHub shortcut icon', async () => {

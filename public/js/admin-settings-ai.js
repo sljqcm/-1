@@ -49,11 +49,11 @@
     let systemPrompt;
     let userPrompt;
     if (generateName) {
-      systemPrompt = "You are a helpful assistant. You must response with valid JSON.";
-      userPrompt = `分析链接：'${url}'。请生成一个简短的网站名称（name，不超过10字）和中文简介（description，不超过30字）。请严格只返回 JSON 格式，例如：{"name": "名称", "description": "简介"}。`;
+      systemPrompt = "You are a helpful assistant. You must respond with valid JSON only. Do not include reasoning, analysis, markdown, or extra text.";
+      userPrompt = `分析链接：'${url}'。请生成一个简短的网站名称（name，不超过10字）和中文简介（description，不超过30字）。请严格只返回 JSON 格式，例如：{"name": "名称", "description": "简介"}。不要输出思考过程或解释。`;
     } else {
-      systemPrompt = "You are a helpful assistant that generates concise and accurate descriptions for bookmarks.";
-      userPrompt = `为以下书签生成一个简洁的中文描述（不超过30字）。请直接返回描述内容，不要包含"书签名称"、"描述"等前缀，也不要使用"标题: 描述"的格式。书签名称：'${name}'，链接：'${url}'`;
+      systemPrompt = "You generate one concise bookmark description only. Do not include reasoning, analysis, markdown, labels, or extra text.";
+      userPrompt = `为以下书签生成一个简洁的中文描述（不超过30字）。只返回最终描述本身，不要输出思考过程、分析、解释，不要包含"书签名称"、"描述"等前缀，也不要使用"标题: 描述"的格式。书签名称：'${name}'，链接：'${url}'`;
     }
 
     try {
@@ -61,6 +61,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          responseFormat: generateName ? 'bookmark-json' : 'bookmark-description',
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }

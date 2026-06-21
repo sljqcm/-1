@@ -184,7 +184,7 @@ test('admin mobile preview hides copy text at the same card density as the real 
   assert.equal(shouldHideCopyText('desktop', '5'), true);
 });
 
-test('menu renderers escape names and encode category URLs', () => {
+test('menu renderers escape names and use category IDs in URLs', () => {
   const categories = [
     {
       id: 1,
@@ -199,9 +199,11 @@ test('menu renderers escape names and encode category URLs', () => {
   const vertical = renderVerticalMenu(categories, 'A & B', false);
 
   assert.match(horizontal, /A &amp; B/);
-  assert.match(horizontal, /%3CChild%3E/);
+  assert.match(horizontal, /href="\?catalog=2"/);
   assert.match(horizontal, /&lt;Child&gt;/);
   assert.match(horizontal, /data-id="2"/);
+  assert.doesNotMatch(horizontal, /%3CChild%3E/);
   assert.match(vertical, /A &amp; B/);
+  assert.match(vertical, /href="\?catalog=1"/);
   assert.match(vertical, /nav|bg-secondary-100|text-primary-700/);
 });

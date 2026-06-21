@@ -3,6 +3,8 @@ import { isAdminAuthenticated, errorResponse, jsonResponse, normalizeSortOrder, 
 import { escapeLikePattern, buildFaviconUrl, getUrlMatchCandidates, normalizeUrlForStorage, parsePagination } from '../../lib/utils';
 import { normalizeBookmarkDesc, normalizeBookmarkLogo, normalizeBookmarkName, normalizeBookmarkUrl } from '../../lib/validators';
 
+const MAX_CONFIG_SEARCH_KEYWORD_LENGTH = 100;
+
 export async function onRequestGet(context) {
   const { request, env } = context;
 
@@ -10,7 +12,11 @@ export async function onRequestGet(context) {
   const catalog = url.searchParams.get('catalog');
   const catalogId = url.searchParams.get('catalogId');
   const { page, pageSize, offset } = parsePagination(url.searchParams, { maxPageSize: 200 });
-  const keyword = url.searchParams.get('keyword');
+  const keyword = (url.searchParams.get('keyword') || '').trim();
+
+  if (keyword.length > MAX_CONFIG_SEARCH_KEYWORD_LENGTH) {
+    return errorResponse(`搜索关键词不能超过 ${MAX_CONFIG_SEARCH_KEYWORD_LENGTH} 个字符`, 400);
+  }
 
   const isAuthenticated = await isAdminAuthenticated(request, env);
   const includePrivate = isAuthenticated ? 1 : 0;

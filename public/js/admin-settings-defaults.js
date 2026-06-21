@@ -88,7 +88,7 @@
       provider: 'workers-ai',
       apiKey: '',
       baseUrl: '',
-      model: '@cf/meta/llama-3-8b-instruct',
+      model: '@cf/google/gemma-4-26b-a4b-it',
       has_api_key: false,
       layout_hide_desc: false,
       layout_hide_links: false,

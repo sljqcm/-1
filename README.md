@@ -193,6 +193,7 @@ npx wrangler d1 execute book --local --file=schema.sql
 | `FOOTER_TEXT` | `曾梦想仗剑走天涯` | 首页页脚文案 |
 | `ICON_API` | `https://faviconsnap.com/api/favicon?url=` | 自动补全 logo 的接口前缀 |
 | `AI_REQUEST_DELAY` | `1500` | AI 一键补全描述调用间隔（毫秒） |
+| `WORKERS_AI_MODEL` | `@cf/google/gemma-4-26b-a4b-it` | Workers AI 模型兜底；后台 AI 设置中保存的模型优先 |
 | `TURNSTILE_SITE_KEY` | 空 | Cloudflare Turnstile 站点密钥；与 `TURNSTILE_SECRET_KEY` 同时配置后启用后台登录与公开投稿人机验证 |
 | `TURNSTILE_SECRET_KEY` | 空 | Cloudflare Turnstile 机密密钥；与 `TURNSTILE_SITE_KEY` 同时配置后启用后台登录与公开投稿人机验证 |
 
@@ -202,6 +203,8 @@ npx wrangler d1 execute book --local --file=schema.sql
 
 - 首页名称/副标题等支持后台设置项的字段，优先读取数据库 `settings`，环境变量作为兜底。
 - `AI_REQUEST_DELAY` 在代码中的默认兜底为 `1500`；本地可按 API 限频自行调整。
+- Workers AI 的模型可以在后台 AI 设置中手动填写；需要使用 Workers AI 的 `@cf/...` 模型名。
+- Workers AI 设置推荐：`@cf/google/gemma-4-26b-a4b-it`（默认）、`@cf/mistralai/mistral-small-3.1-24b-instruct`、`@cf/qwen/qwq-32b`、`@cf/qwen/qwen3-30b-a3b-fp8`、`@cf/meta/llama-3.1-8b-instruct-fp8`。其余模型请自行测试。
 
 > **💡 提示**：如使用免费的 Gemini API Key（模型 `gemini-2.5-flash-lite`），频率限制为 15 次/分钟，请根据实际情况调整 `AI_REQUEST_DELAY`。
 

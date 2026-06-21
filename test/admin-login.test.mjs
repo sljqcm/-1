@@ -16,12 +16,15 @@ if (!globalThis.crypto.subtle.timingSafeEqual) {
 
 function createKv(initialEntries = {}) {
   const store = new Map(Object.entries(initialEntries));
+  const putCalls = [];
   return {
     store,
+    putCalls,
     async get(key) {
       return store.get(key) ?? null;
     },
-    async put(key, value) {
+    async put(key, value, options) {
+      putCalls.push({ key, value, options });
       store.set(key, value);
     },
     async delete(key) {
@@ -74,6 +77,47 @@ test('POST /admin/login keeps working when Turnstile is not configured', async (
   assert.equal(response.status, 302);
   assert.equal(response.headers.get('Location'), '/admin');
   assert.match(response.headers.get('Set-Cookie'), /admin_session=/);
+});
+
+test('POST /admin/login rejects unsupported session durations', async () => {
+  const kv = createKv({
+    admin_username: 'admin',
+    admin_password: 'password',
+  });
+  const response = await onRequestPost({
+    request: createLoginRequest({
+      username: 'admin',
+      password: 'password',
+      duration: '999999',
+    }),
+    env: { NAV_AUTH: kv },
+  });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /登录有效期无效/);
+  assert.equal([...kv.store.keys()].some(key => key.startsWith('session_')), false);
+  assert.equal([...kv.store.keys()].some(key => key.startsWith('csrf_')), false);
+});
+
+test('POST /admin/login accepts the maximum listed session duration', async () => {
+  const kv = createKv({
+    admin_username: 'admin',
+    admin_password: 'password',
+  });
+  const response = await onRequestPost({
+    request: createLoginRequest({
+      username: 'admin',
+      password: 'password',
+      duration: '90',
+    }),
+    env: { NAV_AUTH: kv },
+  });
+
+  assert.equal(response.status, 302);
+  assert.match(response.headers.get('Set-Cookie'), /Max-Age=7776000/);
+  assert.equal(kv.putCalls.some(call => call.key.startsWith('session_') && call.options?.expirationTtl === 7776000), true);
+  assert.equal(kv.putCalls.some(call => call.key.startsWith('csrf_') && call.options?.expirationTtl === 7776000), true);
 });
 
 test('POST /admin/login requires Turnstile token when configured', async () => {

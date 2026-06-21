@@ -163,6 +163,17 @@ h1 {
   margin-right: auto; /* 将右侧的元素推开 */
 }
 
+#searchInput[contenteditable="true"] {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#searchInput[contenteditable="true"][data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
 /* [优化] 添加区域适配移动端 */
 .add-new {
   display: flex;

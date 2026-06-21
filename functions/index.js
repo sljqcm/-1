@@ -177,24 +177,35 @@ export async function onRequest(context) {
   let allSites = sitesResult.results || [];
   if (sitesResult.error) return new Response(`Failed to fetch sites: ${sitesResult.error.message}`, { status: 500 });
 
+  function resolveCatalogId(catalogValue, options = {}) {
+    const value = String(catalogValue || '').trim();
+    if (!value || value.toLowerCase() === 'all') return null;
+    if (/^\d+$/.test(value)) {
+      const id = Number(value);
+      if (categoryMap.has(id)) return id;
+    }
+    return options.allowName && categoryIdMap.has(value) ? categoryIdMap.get(value) : null;
+  }
+
   // === 6. 确定目标分类 ===
-  let requestedCatalogName = (url.searchParams.get('catalog') || '').trim();
+  const requestedCatalogValue = (url.searchParams.get('catalog') || '').trim();
+  let requestedCatalogId = resolveCatalogId(requestedCatalogValue);
 
   // 共享首页缓存仅基于稳定的默认分类渲染，避免用户的 iori_last_category
   // 影响公共 KV HTML。记住上次分类的恢复逻辑仅在前端执行。
-  if (!requestedCatalogName) {
+  if (!requestedCatalogValue) {
     const defaultCat = (S.home_default_category || '').trim();
-    if (defaultCat && categoryIdMap.has(defaultCat)) requestedCatalogName = defaultCat;
+    requestedCatalogId = resolveCatalogId(defaultCat, { allowName: true });
   }
 
   let targetCategoryIds = [];
   let currentCatalogName = '';
-  const catalogExists = requestedCatalogName && categoryIdMap.has(requestedCatalogName);
+  const catalogExists = requestedCatalogId !== null;
 
   if (catalogExists) {
-    const rootId = categoryIdMap.get(requestedCatalogName);
-    currentCatalogName = requestedCatalogName;
-    targetCategoryIds.push(rootId);
+    const requestedCategory = categoryMap.get(requestedCatalogId);
+    currentCatalogName = requestedCategory.catelog;
+    targetCategoryIds.push(requestedCatalogId);
   }
 
   const sites = targetCategoryIds.length > 0
@@ -309,7 +320,7 @@ export async function onRequest(context) {
       <div class="relative max-w-xl mx-auto">
         ${searchEngineOptions}
         <div class="relative">
-          <input type="text" name="search" placeholder="搜索书签..." class="search-input-target w-full pl-12 pr-4 py-3.5 rounded-2xl transition-all shadow-lg outline-none focus:outline-none focus:ring-2 ${searchInputClass}" autocomplete="off">
+          <input type="search" placeholder="搜索书签..." class="search-input-target w-full pl-12 pr-4 py-3.5 rounded-2xl transition-all shadow-lg outline-none focus:outline-none focus:ring-2 ${searchInputClass}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search" aria-label="搜索书签" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-3.5 ${searchIconClass}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
       </div>
@@ -323,7 +334,7 @@ export async function onRequest(context) {
       <div class="relative max-w-xl mx-auto ${categoryPosition === 'below_search' ? 'mb-8' : ''}">
         ${searchEngineOptions}
         <div class="relative">
-          <input id="headerSearchInput" type="text" name="search" placeholder="搜索书签..." class="search-input-target w-full pl-12 pr-4 py-3.5 rounded-2xl transition-all shadow-lg outline-none focus:outline-none focus:ring-2 ${searchInputClass}" autocomplete="off">
+          <input id="headerSearchInput" type="search" placeholder="搜索书签..." class="search-input-target w-full pl-12 pr-4 py-3.5 rounded-2xl transition-all shadow-lg outline-none focus:outline-none focus:ring-2 ${searchInputClass}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search" aria-label="搜索书签" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-3.5 ${searchIconClass}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
       </div>
@@ -492,7 +503,7 @@ export async function onRequest(context) {
     enableFrostedGlass: S.layout_enable_frosted_glass,
     rememberLastCategory: S.home_remember_last_category,
     // 当前 SSR 已渲染的分类（用于前端 Auto-restore 判断是否可跳过重绘）
-    ssrCatalogId: catalogExists ? categoryIdMap.get(requestedCatalogName) : 'all',
+    ssrCatalogId: catalogExists ? requestedCatalogId : 'all',
   }).replace(/</g, '\\u003c');
 
   // --- 一次性替换 </head> ---

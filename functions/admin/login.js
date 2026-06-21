@@ -22,6 +22,7 @@ async function createAdminSession(env, ttl = 86400) {
 // 暴力破解防护配置
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 600; // 10 分钟
+const ALLOWED_LOGIN_DURATIONS = new Set([1, 7, 30, 60, 90]);
 
 function renderLoginPage(message = '', env = {}) {
   const hasError = Boolean(message);
@@ -152,7 +153,10 @@ export async function onRequestPost(context) {
     const formData = await request.formData();
     const name = (formData.get('username') || '').trim();
     const password = (formData.get('password') || '').trim();
-    const durationDays = parseInt(formData.get('duration') || '1', 10);
+    const durationDays = Number(formData.get('duration') || '1');
+    if (!ALLOWED_LOGIN_DURATIONS.has(durationDays)) {
+      return renderLoginPage('登录有效期无效', env);
+    }
     const ttl = durationDays * 86400;
     const turnstileToken = String(formData.get('cf-turnstile-response') || '').trim();
 
