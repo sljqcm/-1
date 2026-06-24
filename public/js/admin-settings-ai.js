@@ -167,7 +167,6 @@
       if (refs.progressBar) refs.progressBar.style.width = `${((i + 1) / total) * 100}%`;
 
       if (i < total - 1) {
-        console.log('Waiting for next request...:', aiRequestDelay);
         await new Promise(resolve => setTimeout(resolve, aiRequestDelay));
       }
     }
