@@ -67,6 +67,15 @@
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
+/* 外部搜索预览：未配置标题颜色时保留各风格的默认文字颜色 */
+.home-live-preview:not(.uses-card-style-3) .search-engine-option {
+  color: #111827 !important;
+}
+
+.home-live-preview.uses-card-style-3 .search-engine-option {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
 .live-search-box {
   position: relative;
   width: min(100%, 36rem);
@@ -124,7 +133,7 @@
 }
 
 .live-category-nav {
-  width: min(100%, 46rem);
+  width: min(100%, 64rem); /* 与首页 max-w-5xl 一致 */
   min-width: 0;
   max-width: 100%;
   display: flex;
@@ -148,6 +157,11 @@
 
 .home-live-preview.category-top .live-category-nav {
   margin-bottom: 1.5rem;
+}
+
+/* 风格一/二顶部分类与预览右上角操作按钮对齐，按钮视觉保持原样 */
+.home-live-preview.category-top:not(.uses-card-style-3) .live-preview-hero {
+  padding-top: 1rem;
 }
 
 .live-category-nav.multi-line {
@@ -177,7 +191,7 @@
   justify-content: center;
   gap: 0.25rem;
   max-width: 100%;
-  min-width: min(calc(4em + 2rem), 100%);
+  min-width: calc(4em + 2rem); /* 至少 4 字宽 */
   height: 2.5rem;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -318,6 +332,249 @@
   color: #fff;
 }
 
+/* 所有风格共用风格三的外部搜索结构 */
+.home-live-preview .search-engine-option,
+.home-live-preview.has-wallpaper .search-engine-option {
+  position: relative !important;
+  border: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  font-size: 0.8rem !important;
+  font-weight: 400 !important;
+  padding: 0.2rem 0.7rem 0.35rem !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  text-shadow: none !important;
+}
+
+.home-live-preview .search-engine-option::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  background: #399dff;
+  transform: translateX(-50%);
+  transition: width 0.25s ease;
+}
+
+.home-live-preview .search-engine-option:hover,
+.home-live-preview.has-wallpaper .search-engine-option:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.home-live-preview .search-engine-option:hover::after {
+  width: 45%;
+}
+
+.home-live-preview .search-engine-option.active,
+.home-live-preview.has-wallpaper .search-engine-option.active {
+  color: #399dff !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.home-live-preview .search-engine-option.active::after {
+  width: 60%;
+}
+
+.home-live-preview .live-search-engines {
+  gap: 0.35rem 0.5rem !important;
+  margin-bottom: 0.45rem !important;
+}
+
+.home-live-preview .search-engine-option span {
+  color: inherit !important;
+}
+
+/* 风格三实时预览：与首页的 Nav-Item 模式保持一致 */
+.home-live-preview.uses-card-style-3.has-wallpaper .home-live-preview-vignette {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-preview-hero {
+  min-height: 15rem;
+  padding-top: 2.75rem;
+  padding-bottom: 2.8rem;
+}
+
+.home-live-preview.uses-card-style-3[data-device="mobile"] .live-preview-hero {
+  padding-top: 2rem;
+  padding-bottom: 1.75rem;
+}
+
+/* 风格三 + 分类顶部：贴近 Nav-Item */
+.home-live-preview.uses-card-style-3.category-top:not([data-device="mobile"]) .live-preview-hero {
+  padding-top: 1rem;
+  padding-bottom: 2rem;
+}
+
+.home-live-preview.uses-card-style-3.category-top[data-device="mobile"] .live-preview-hero {
+  padding-top: 1rem;
+  padding-bottom: 1.5rem;
+}
+
+.home-live-preview.uses-card-style-3.category-top .live-category-nav {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  margin-bottom: 1.5rem;
+  gap: 0.15rem 0.45rem;
+  max-height: none;
+  overflow: visible;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.home-live-preview.uses-card-style-3.category-top .live-category-nav > .live-category-item > .live-category-button,
+.home-live-preview.uses-card-style-3.category-top .live-category-nav > .live-category-more-wrapper > .live-category-more {
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.home-live-preview.uses-card-style-3[data-device="mobile"] .live-category-nav > .live-category-item > .live-category-button,
+.home-live-preview.uses-card-style-3.has-wallpaper[data-device="mobile"] .live-category-nav > .live-category-item > .live-category-button,
+.home-live-preview.uses-card-style-3[data-device="mobile"] .live-category-nav > .live-category-more-wrapper > .live-category-more,
+.home-live-preview.uses-card-style-3.has-wallpaper[data-device="mobile"] .live-category-nav > .live-category-more-wrapper > .live-category-more {
+  position: relative;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.96);
+  box-shadow: none;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.home-live-preview.uses-card-style-3[data-device="mobile"] .live-category-nav > .live-category-item > .live-category-button.active,
+.home-live-preview.uses-card-style-3[data-device="mobile"] .live-category-nav > .live-category-more-wrapper > .live-category-more.active {
+  color: #399dff;
+  background: transparent;
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-search-box {
+  width: min(92%, 30rem);
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .search-input-target,
+.home-live-preview.uses-card-style-3.has-wallpaper:not([data-device="mobile"]) .search-input-target {
+  height: 3.1rem !important;
+  padding: 0.45rem 3.1rem 0.45rem 1.15rem !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: rgba(179, 183, 184, 0.23) !important;
+  color: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 1.15rem !important;
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .search-input-target::placeholder,
+.home-live-preview.uses-card-style-3.has-wallpaper:not([data-device="mobile"]) .search-input-target::placeholder {
+  color: #9ca3af !important;
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-search-icon,
+.home-live-preview.uses-card-style-3.has-wallpaper:not([data-device="mobile"]) .live-search-icon {
+  top: 50%;
+  right: 1rem;
+  left: auto;
+  color: rgba(255, 255, 255, 0.94) !important;
+  transform: translateY(-50%);
+}
+
+/* 手机预览风格三：搜索/外部搜索引擎与桌面一致 */
+.home-live-preview.uses-card-style-3[data-device="mobile"] .live-search-box {
+  width: min(92%, 30rem);
+}
+
+.home-live-preview.uses-card-style-3[data-device="mobile"] .search-input-target,
+.home-live-preview.uses-card-style-3.has-wallpaper[data-device="mobile"] .search-input-target {
+  height: 2.9rem !important;
+  padding: 0.45rem 2.85rem 0.45rem 1rem !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: rgba(179, 183, 184, 0.23) !important;
+  color: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 1rem !important;
+}
+
+.home-live-preview.uses-card-style-3[data-device="mobile"] .search-input-target::placeholder,
+.home-live-preview.uses-card-style-3.has-wallpaper[data-device="mobile"] .search-input-target::placeholder {
+  color: #9ca3af !important;
+}
+
+.home-live-preview.uses-card-style-3[data-device="mobile"] .live-search-icon,
+.home-live-preview.uses-card-style-3.has-wallpaper[data-device="mobile"] .live-search-icon {
+  top: 50%;
+  right: 0.9rem;
+  left: auto;
+  color: rgba(255, 255, 255, 0.94) !important;
+  transform: translateY(-50%);
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav {
+  gap: 0.75rem; /* 与首页 gap-3 一致 */
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav > .live-category-item > .live-category-button,
+.home-live-preview.uses-card-style-3.has-wallpaper:not([data-device="mobile"]) .live-category-nav > .live-category-item > .live-category-button,
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav > .live-category-more-wrapper > .live-category-more,
+.home-live-preview.uses-card-style-3.has-wallpaper:not([data-device="mobile"]) .live-category-nav > .live-category-more-wrapper > .live-category-more {
+  position: relative;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: calc(4em + 2rem);
+  height: auto;
+  padding: 0.45rem 1.05rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  font-size: 0.92rem;
+  font-weight: 400;
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav > .live-category-item > .live-category-button::before,
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav > .live-category-more-wrapper > .live-category-more::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #399dff;
+  transform: translateX(-50%);
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav > .live-category-item > .live-category-button.active,
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav > .live-category-more-wrapper > .live-category-more.active {
+  color: #399dff;
+  background: transparent;
+  box-shadow: none;
+  font-weight: 500;
+}
+
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav > .live-category-item > .live-category-button.active::before,
+.home-live-preview.uses-card-style-3:not([data-device="mobile"]) .live-category-nav > .live-category-more-wrapper > .live-category-more.active::before {
+  width: 60%;
+}
+
 .live-preview-meta {
   display: flex;
   justify-content: space-between;
@@ -325,4 +582,3 @@
   align-items: center;
   padding: 1.1rem 1.35rem;
 }
-

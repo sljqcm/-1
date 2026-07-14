@@ -2,6 +2,29 @@
   const ns = window.AdminSettings = window.AdminSettings || {};
   let initialized = false;
 
+  const wallpaperDefaults = window.IoriWallpaperDefaults || {};
+
+  function getStyleDefaultWallpaper(cardStyle = 'style1') {
+    if (typeof wallpaperDefaults.getStyleDefaultWallpaper === 'function') {
+      return wallpaperDefaults.getStyleDefaultWallpaper(cardStyle);
+    }
+    return '';
+  }
+
+  function resolveWallpaperUrl(customWallpaper = '', cardStyle = 'style1') {
+    if (typeof wallpaperDefaults.resolveWallpaperUrl === 'function') {
+      return wallpaperDefaults.resolveWallpaperUrl(customWallpaper, cardStyle);
+    }
+    const custom = String(customWallpaper || '').trim();
+    return custom || getStyleDefaultWallpaper(cardStyle);
+  }
+
+  function getCurrentCardStyle() {
+    const currentSettings = getCurrentSettings();
+    const activeStyle = document.querySelector('#desktopCardSettingsPanel .card-style-btn.active')?.dataset?.style;
+    return activeStyle || currentSettings.layout_card_style || 'style1';
+  }
+
   function getCurrentSettings() {
     return ns.core?.getCurrentSettings?.() || ns.currentSettings || {};
   }
@@ -9,12 +32,35 @@
   function getRefs() {
     return {
       customWallpaperInput: document.getElementById('customWallpaperInput'),
+      restoreStyleWallpaperBtn: document.getElementById('restoreStyleWallpaperBtn'),
       bingCountrySelect: document.getElementById('bingCountry'),
       onlineWallpapersDiv: document.getElementById('onlineWallpapers'),
       wpSourceBingBtn: document.getElementById('wpSourceBing'),
       wpSource360Btn: document.getElementById('wpSource360'),
       category360Select: document.getElementById('category360'),
     };
+  }
+
+  function setWallpaperInputValue(url) {
+    const refs = getRefs();
+    if (!refs.customWallpaperInput) return;
+    refs.customWallpaperInput.value = url || '';
+    refs.customWallpaperInput.dispatchEvent(new Event('input', { bubbles: true }));
+    refs.customWallpaperInput.dispatchEvent(new Event('change', { bubbles: true }));
+    const currentSettings = getCurrentSettings();
+    currentSettings.layout_custom_wallpaper = refs.customWallpaperInput.value.trim();
+    refs.customWallpaperInput.classList.add('bg-green-50');
+    setTimeout(() => refs.customWallpaperInput.classList.remove('bg-green-50'), 300);
+  }
+
+  function restoreStyleDefaultWallpaper() {
+    // 清空自定义壁纸，使首页/预览按当前风格自动使用默认壁纸
+    setWallpaperInputValue('');
+    const refs = getRefs();
+    if (refs.customWallpaperInput) {
+      refs.customWallpaperInput.placeholder = getStyleDefaultWallpaper(getCurrentCardStyle());
+    }
+    ns.preview?.scheduleFullPreviewRender?.();
   }
 
   function ensureWallpaperStyles() {
@@ -256,6 +302,7 @@
     const refs = getRefs();
     const currentSettings = getCurrentSettings();
 
+    refs.restoreStyleWallpaperBtn?.addEventListener('click', restoreStyleDefaultWallpaper);
     refs.wpSourceBingBtn?.addEventListener('click', () => switchWallpaperSource('bing'));
     refs.wpSource360Btn?.addEventListener('click', () => switchWallpaperSource('360'));
 
@@ -282,5 +329,8 @@
     switchWallpaperSource,
     fetchBingWallpapers,
     fetch360Wallpapers,
+    getStyleDefaultWallpaper,
+    resolveWallpaperUrl,
+    restoreStyleDefaultWallpaper,
   };
 })();

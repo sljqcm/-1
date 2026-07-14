@@ -45,7 +45,11 @@
     if (titleFont) shared.loadFont(titleFont);
     if (descFont) shared.loadFont(descFont);
 
-    [document.getElementById('cardStyle1Preview'), document.getElementById('cardStyle2Preview')].forEach(card => {
+    [
+      document.getElementById('cardStyle1Preview'),
+      document.getElementById('cardStyle2Preview'),
+      document.getElementById('cardStyle3Preview'),
+    ].forEach(card => {
       if (!card) return;
       card.style.setProperty('--card-radius', radius + 'px');
 
@@ -109,9 +113,38 @@
 
     const preview1 = document.getElementById('cardStyle1PreviewContainer');
     const preview2 = document.getElementById('cardStyle2PreviewContainer');
+    const preview3 = document.getElementById('cardStyle3PreviewContainer');
     if (preview1) preview1.style.maxWidth = width;
     if (preview2) preview2.style.maxWidth = width;
+    if (preview3) preview3.style.maxWidth = width;
     render.schedulePreviewRenderForDevice('desktop');
+  }
+
+
+ function syncCardContentHideOptions(device, style) {
+    const isStyle3 = style === 'style3';
+    if (device === 'mobile') {
+      document.getElementById('mobileStyle3FixedHideHint')?.classList.toggle('hidden', !isStyle3);
+      [
+        'mobileHideCategoryOption',
+        'mobileHideDescOption',
+        'mobileHideLinksOption',
+        'mobileCardDescStylePanel',
+      ].forEach((id) => {
+        document.getElementById(id)?.classList.toggle('hidden', isStyle3);
+      });
+      return;
+    }
+
+    document.getElementById('desktopStyle3FixedHideHint')?.classList.toggle('hidden', !isStyle3);
+    [
+      'hideCategoryOption',
+      'hideDescOption',
+      'hideLinksOption',
+      'desktopCardDescStylePanel',
+    ].forEach((id) => {
+      document.getElementById(id)?.classList.toggle('hidden', isStyle3);
+    });
   }
 
  function selectCardStyle(style) {
@@ -120,24 +153,34 @@
 
     const btn1 = document.getElementById('btnStyle1');
     const btn2 = document.getElementById('btnStyle2');
+    const btn3 = document.getElementById('btnStyle3');
     const preview1 = document.getElementById('cardStyle1PreviewContainer');
     const preview2 = document.getElementById('cardStyle2PreviewContainer');
+    const preview3 = document.getElementById('cardStyle3PreviewContainer');
 
-    if (!btn1 || !btn2 || !preview1 || !preview2) return;
+    if (!btn1 || !btn2 || !btn3 || !preview1 || !preview2 || !preview3) return;
 
-    btn1.className = 'card-style-btn card-segment-option';
-    btn2.className = 'card-style-btn card-segment-option';
+    [btn1, btn2, btn3].forEach(btn => {
+      btn.className = 'card-style-btn card-segment-option';
+    });
+    [preview1, preview2, preview3].forEach(preview => preview.classList.add('hidden'));
 
     if (style === 'style2') {
       btn2.classList.add('active');
-      preview1.classList.add('hidden');
       preview2.classList.remove('hidden');
+    } else if (style === 'style3') {
+      btn3.classList.add('active');
+      preview3.classList.remove('hidden');
     } else {
       btn1.classList.add('active');
       preview1.classList.remove('hidden');
-      preview2.classList.add('hidden');
     }
 
+    syncCardContentHideOptions('desktop', style);
+    const wallpaperInput = document.getElementById('customWallpaperInput');
+    if (wallpaperInput && !wallpaperInput.value.trim()) {
+      wallpaperInput.placeholder = ns.wallpaper?.getStyleDefaultWallpaper?.(style) || wallpaperInput.placeholder;
+    }
     render.schedulePreviewRenderForDevice('desktop');
     render.triggerPreviewAnimationForDevice('desktop');
   }
@@ -148,17 +191,22 @@
 
     const btn1 = document.getElementById('mobileBtnStyle1');
     const btn2 = document.getElementById('mobileBtnStyle2');
-    if (!btn1 || !btn2) return;
+    const btn3 = document.getElementById('mobileBtnStyle3');
+    if (!btn1 || !btn2 || !btn3) return;
 
-    btn1.className = 'card-style-btn card-segment-option';
-    btn2.className = 'card-style-btn card-segment-option';
+    [btn1, btn2, btn3].forEach(btn => {
+      btn.className = 'card-style-btn card-segment-option';
+    });
 
     if (style === 'style2') {
       btn2.classList.add('active');
+    } else if (style === 'style3') {
+      btn3.classList.add('active');
     } else {
       btn1.classList.add('active');
     }
 
+    syncCardContentHideOptions('mobile', style);
     render.schedulePreviewRenderForDevice('mobile');
     render.triggerPreviewAnimationForDevice('mobile');
   }
@@ -334,8 +382,10 @@
     }
     document.getElementById('btnStyle1')?.addEventListener('click', () => selectCardStyle('style1'));
     document.getElementById('btnStyle2')?.addEventListener('click', () => selectCardStyle('style2'));
+    document.getElementById('btnStyle3')?.addEventListener('click', () => selectCardStyle('style3'));
     document.getElementById('mobileBtnStyle1')?.addEventListener('click', () => selectMobileCardStyle('style1'));
     document.getElementById('mobileBtnStyle2')?.addEventListener('click', () => selectMobileCardStyle('style2'));
+    document.getElementById('mobileBtnStyle3')?.addEventListener('click', () => selectMobileCardStyle('style3'));
     document.querySelectorAll('.card-animation-option[data-animation-device="desktop"]').forEach(option => {
       option.addEventListener('click', () => {
         if (!refs.cardAnimationSelect) return;

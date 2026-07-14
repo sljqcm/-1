@@ -71,7 +71,7 @@
       switch (engine) {
         case 'google': placeholder = 'Google 搜索...'; break;
         case 'baidu': placeholder = '百度搜索...'; break;
-        case 'github': placeholder = 'GitHub 搜索...'; break;
+        case 'github': placeholder = 'Github 搜索...'; break;
       }
 
       searchInputs.forEach(input => {

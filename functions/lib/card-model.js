@@ -27,11 +27,12 @@ function getDeviceSettingOrDefault(settings, device, key, fallback = '') {
 
 export function buildCardTemplateConfig(settings = {}, device = 'desktop') {
   const isMobile = device === 'mobile';
-  const hideDesc = getDeviceSetting(settings, device, 'layout_hide_desc', isMobile) === true;
-  const hideLinks = getDeviceSetting(settings, device, 'layout_hide_links', isMobile) === true;
-  const hideCategory = getDeviceSetting(settings, device, 'layout_hide_category', false) === true;
-  const enableFrostedGlass = getDeviceSetting(settings, device, 'layout_enable_frosted_glass', false) === true;
   const cardStyle = getDeviceSetting(settings, device, 'layout_card_style', isMobile ? 'style2' : 'style1') || (isMobile ? 'style2' : 'style1');
+  const isNavigationTileStyle = cardStyle === 'style3';
+  const hideDesc = isNavigationTileStyle || getDeviceSetting(settings, device, 'layout_hide_desc', isMobile) === true;
+  const hideLinks = isNavigationTileStyle || getDeviceSetting(settings, device, 'layout_hide_links', isMobile) === true;
+  const hideCategory = isNavigationTileStyle || getDeviceSetting(settings, device, 'layout_hide_category', false) === true;
+  const enableFrostedGlass = getDeviceSetting(settings, device, 'layout_enable_frosted_glass', false) === true;
   const cardAnimation = getDeviceSetting(settings, device, 'layout_card_animation', 'radial') || 'radial';
   const gridCols = getDeviceSetting(settings, device, 'layout_grid_cols', isMobile ? '3' : '4') || (isMobile ? '3' : '4');
   const hideCopyText = isMobile ? Number(gridCols) >= 3 : (Number(gridCols) || 4) >= 5;
@@ -67,7 +68,7 @@ export function buildCardTemplateConfig(settings = {}, device = 'desktop') {
       ? 'site-card group h-full flex flex-col overflow-hidden transition-all'
       : 'site-card group h-full flex flex-col bg-white border border-primary-100/60 shadow-sm overflow-hidden dark:bg-gray-800 dark:border-gray-700',
     frostedClass: enableFrostedGlass ? 'frosted-glass-effect' : '',
-    cardStyleClass: cardStyle === 'style2' ? 'style-2' : '',
+    cardStyleClass: cardStyle === 'style2' ? 'style-2' : (isNavigationTileStyle ? 'style-3' : ''),
     titleClass: 'site-title text-base font-medium text-gray-900 dark:text-gray-100 truncate transition-all duration-300 origin-left',
     descClass: 'mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2',
     categoryClass: 'site-category inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-xs font-medium bg-secondary-100 text-primary-700 dark:bg-secondary-800 dark:text-primary-300',

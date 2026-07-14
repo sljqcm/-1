@@ -15,7 +15,8 @@
  function getLegacyPreviewCard() {
     const preview1 = document.getElementById('cardStyle1PreviewContainer');
     const preview2 = document.getElementById('cardStyle2PreviewContainer');
-    const container = preview2 && !preview2.classList.contains('hidden') ? preview2 : preview1;
+    const preview3 = document.getElementById('cardStyle3PreviewContainer');
+    const container = [preview1, preview2, preview3].find(preview => preview && !preview.classList.contains('hidden'));
     return container?.querySelector('.site-card') || null;
   }
 

@@ -1,12 +1,13 @@
 // functions/index.js
 import { isAdminAuthenticated, getHomeCacheKey, clearHomeCacheDirty, markHomeCacheDirty, getHomeCacheDirtyValue } from './_middleware';
 import { FONT_MAP, HOME_CACHE_TTL } from './constants';
-import { escapeHTML, sanitizeUrl, normalizeSortOrder, getStyleStr } from './lib/utils';
+import { escapeHTML, sanitizeUrl, normalizeSortOrder, getStyleStr, sanitizeStyleColor } from './lib/utils';
 import { getSettingsKeys, parseSettings } from './lib/settings-parser';
 import { renderHorizontalMenu, renderVerticalMenu } from './lib/menu-renderer';
 import { renderSiteCards, renderEmptyState } from './lib/card-renderer';
 import { buildCardHydrationState } from './lib/card-model';
 import { ensureSchemaReady } from './lib/schema-migration';
+import { resolveWallpaperUrl } from './lib/wallpaper-defaults';
 
 // 模板内容在 Worker 运行时实例生命周期内不变（部署会替换实例），缓存避免每次 MISS 重复 ASSETS.fetch
 let cachedTemplateHtml = null;
@@ -213,8 +214,9 @@ export async function onRequest(context) {
     : allSites;
 
   // === 7. 壁纸处理 ===
-  // 壁纸 URL 直接使用设置中的 layout_custom_wallpaper，可被 KV 正常缓存
-  const isCustomWallpaper = Boolean(S.layout_custom_wallpaper);
+  // 自定义壁纸优先；留空时使用当前桌面卡片风格的默认壁纸
+  const resolvedWallpaperUrl = resolveWallpaperUrl(S.layout_custom_wallpaper, S.layout_card_style);
+  const isCustomWallpaper = Boolean(resolvedWallpaperUrl);
   const themeClass = isCustomWallpaper ? 'custom-wallpaper' : '';
 
   // === 8. 计算主题样式 ===
@@ -249,8 +251,13 @@ export async function onRequest(context) {
     if (cols === '7') return 'md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7';
     return 'md:grid-cols-3 lg:grid-cols-4';
   };
-  const mobileCardStyleClass = S.mobile_layout_card_style === 'style1' ? 'mobile-card-style1' : 'mobile-card-style2';
-  let gridClass = `grid ${getMobileGridClass(S.mobile_layout_grid_cols)} ${getDesktopGridClass(S.layout_grid_cols)} ${mobileCardStyleClass} gap-3 sm:gap-6 justify-items-center`;
+  const getCardStyleGridClass = (style, prefix) => {
+    if (style === 'style3') return `${prefix}-card-style3`;
+    return style === 'style2' ? `${prefix}-card-style2` : `${prefix}-card-style1`;
+  };
+  const mobileCardStyleClass = getCardStyleGridClass(S.mobile_layout_card_style, 'mobile');
+  const desktopCardStyleClass = getCardStyleGridClass(S.layout_card_style, 'desktop');
+  let gridClass = `grid ${getMobileGridClass(S.mobile_layout_grid_cols)} ${getDesktopGridClass(S.layout_grid_cols)} ${mobileCardStyleClass} ${desktopCardStyleClass} gap-3 sm:gap-6 justify-items-center`;
 
   // === 12. 计算文本和统计信息 ===
   const headingPlainText = currentCatalogName ? `${currentCatalogName} · ${sites.length} 个书签` : `全部收藏 · ${sites.length} 个书签`;
@@ -277,7 +284,7 @@ export async function onRequest(context) {
         <label class="search-engine-option active" data-engine="local"><span>站内</span></label>
         <label class="search-engine-option" data-engine="google"><span>Google</span></label>
         <label class="search-engine-option" data-engine="baidu"><span>Baidu</span></label>
-        <label class="search-engine-option" data-engine="github"><span>GitHub</span></label>
+        <label class="search-engine-option" data-engine="github"><span>Github</span></label>
     </div>` : '';
 
   // === 14. Header HTML ===
@@ -293,12 +300,16 @@ export async function onRequest(context) {
   const categoryPosition = normalizeCategoryPosition(S.home_category_position, S.layout_menu_layout);
   const isHorizontalCategoryLayout = categoryPosition !== 'left';
   const categoryFlow = S.home_category_flow === 'multi_line' ? 'multi_line' : 'single_line';
+  // 分类行宽度 max-w-5xl（64rem），按钮 min-width: 4em+2rem，单行约 8 个
   const horizontalCategoryNavShellClass = categoryPosition === 'top'
-    ? 'horizontal-category-nav-shell is-top relative max-w-5xl mx-auto'
-    : 'horizontal-category-nav-shell relative max-w-5xl mx-auto';
+    ? 'horizontal-category-nav-shell is-top relative mx-auto'
+    : 'horizontal-category-nav-shell relative mx-auto';
   const horizontalCategoryNavJustifyClass = categoryFlow === 'multi_line' ? 'justify-start' : 'justify-center';
-  const horizontalCategoryNavOverflowClass = categoryFlow === 'multi_line' ? 'overflow-visible' : 'overflow-hidden';
-  const horizontalCategoryNavStyle = categoryFlow === 'multi_line' ? '' : ' style="max-height: 60px;"';
+  // 单行：nowrap + 宽度折叠（与预览一致）；多行：wrap 且无 more
+  const horizontalCategoryNavWrapClass = categoryFlow === 'multi_line' ? 'flex-wrap' : 'flex-nowrap';
+  // 单行也用 overflow-visible：overflow-hidden 会裁切多级下拉与「更多」弹出层
+  const horizontalCategoryNavOverflowClass = 'overflow-visible';
+  const horizontalCategoryNavFlowClass = categoryFlow === 'multi_line' ? 'is-multi-line' : 'is-single-line';
   const horizontalMoreHtml = categoryFlow === 'multi_line' ? '' : `
           <div id="horizontalMoreWrapper" class="relative hidden">
             <button id="horizontalMoreBtn" class="nav-btn inactive">
@@ -308,7 +319,7 @@ export async function onRequest(context) {
           </div>`;
   const horizontalCategoryNavHtml = `
       <div class="${horizontalCategoryNavShellClass}">
-        <div id="horizontalCategoryNav" class="flex flex-wrap ${horizontalCategoryNavJustifyClass} items-center gap-3 ${horizontalCategoryNavOverflowClass} transition-all duration-300"${horizontalCategoryNavStyle}>
+        <div id="horizontalCategoryNav" class="flex ${horizontalCategoryNavWrapClass} ${horizontalCategoryNavJustifyClass} items-center gap-3 ${horizontalCategoryNavOverflowClass} ${horizontalCategoryNavFlowClass} transition-all duration-300">
           ${horizontalCatalogMarkup}
           ${horizontalMoreHtml}
         </div>
@@ -316,26 +327,26 @@ export async function onRequest(context) {
 
   const verticalHeaderContent = `
     <div class="max-w-4xl mx-auto text-center relative z-10 ${themeClass} py-8">
-      <div class="mb-8">${horizontalTitleHtml}${horizontalSubtitleHtml}</div>
-      <div class="relative max-w-xl mx-auto">
+      <div class="home-title-block mb-8">${horizontalTitleHtml}${horizontalSubtitleHtml}</div>
+      <div class="home-search-shell relative max-w-xl mx-auto">
         ${searchEngineOptions}
-        <div class="relative">
+        <div class="home-search-field relative">
           <input type="search" placeholder="搜索书签..." class="search-input-target w-full pl-12 pr-4 py-3.5 rounded-2xl transition-all shadow-lg outline-none focus:outline-none focus:ring-2 ${searchInputClass}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search" aria-label="搜索书签" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-3.5 ${searchIconClass}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" class="home-search-icon h-6 w-6 absolute left-4 top-3.5 ${searchIconClass}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
       </div>
     </div>`;
 
   const horizontalHeaderContent = `
     <div class="max-w-5xl mx-auto text-center relative z-10 ${themeClass}">
-      ${categoryPosition === 'top' ? `<div class="mb-6">${horizontalCategoryNavHtml}</div>` : ''}
-      <div class="max-w-4xl mx-auto mb-8">${horizontalTitleHtml}${horizontalSubtitleHtml}</div>
+      ${categoryPosition === 'top' ? `<div class="category-nav-top-wrap">${horizontalCategoryNavHtml}</div>` : ''}
+      <div class="home-title-block max-w-4xl mx-auto mb-8">${horizontalTitleHtml}${horizontalSubtitleHtml}</div>
       ${categoryPosition === 'above_search' ? `<div class="mb-8">${horizontalCategoryNavHtml}</div>` : ''}
-      <div class="relative max-w-xl mx-auto ${categoryPosition === 'below_search' ? 'mb-8' : ''}">
+      <div class="home-search-shell relative max-w-xl mx-auto ${categoryPosition === 'below_search' ? 'mb-8' : ''}">
         ${searchEngineOptions}
-        <div class="relative">
+        <div class="home-search-field relative">
           <input id="headerSearchInput" type="search" placeholder="搜索书签..." class="search-input-target w-full pl-12 pr-4 py-3.5 rounded-2xl transition-all shadow-lg outline-none focus:outline-none focus:ring-2 ${searchInputClass}" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="search" enterkeyhint="search" aria-label="搜索书签" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-3.5 ${searchIconClass}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" class="home-search-icon h-6 w-6 absolute left-4 top-3.5 ${searchIconClass}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
         </div>
       </div>
       ${categoryPosition === 'below_search' ? horizontalCategoryNavHtml : ''}
@@ -401,7 +412,7 @@ export async function onRequest(context) {
   }
 
   // 背景层 HTML
-  const safeWallpaperUrl = sanitizeUrl(S.layout_custom_wallpaper);
+  const safeWallpaperUrl = sanitizeUrl(resolvedWallpaperUrl);
   const defaultBgColor = '#fdf8f3';
   let bgLayerHtml = '';
   if (safeWallpaperUrl) {
@@ -476,12 +487,16 @@ export async function onRequest(context) {
   let customCardCss = '';
   const desktopCardTitleStyle = getStyleStr(S.card_title_size, S.card_title_color, S.card_title_font).replace('style="', '').replace('"', '');
   const mobileCardTitleStyle = getStyleStr(S.mobile_card_title_size, S.mobile_card_title_color, S.mobile_card_title_font).replace('style="', '').replace('"', '');
+  const desktopCardTitleColor = sanitizeStyleColor(S.card_title_color);
+  const mobileCardTitleColor = sanitizeStyleColor(S.mobile_card_title_color);
   const desktopCardDescStyle = getStyleStr(S.card_desc_size, S.card_desc_color, S.card_desc_font).replace('style="', '').replace('"', '');
   const mobileCardDescStyle = getStyleStr(S.mobile_card_desc_size, S.mobile_card_desc_color, S.mobile_card_desc_font).replace('style="', '').replace('"', '');
   if (desktopCardTitleStyle || mobileCardTitleStyle) {
     if (desktopCardTitleStyle) customCardCss += `@media (min-width: 768px) { .site-title { ${desktopCardTitleStyle} } }`;
     if (mobileCardTitleStyle) customCardCss += `@media (max-width: 767px) { .site-title { ${mobileCardTitleStyle} } }`;
   }
+  if (desktopCardTitleColor) customCardCss += `@media (min-width: 768px) { body { --desktop-card-title-color: ${desktopCardTitleColor}; } }`;
+  if (mobileCardTitleColor) customCardCss += `@media (max-width: 767px) { body { --mobile-card-title-color: ${mobileCardTitleColor}; } }`;
   if (desktopCardDescStyle || mobileCardDescStyle) {
     if (desktopCardDescStyle) customCardCss += `@media (min-width: 768px) { .site-card p { ${desktopCardDescStyle} } }`;
     if (mobileCardDescStyle) customCardCss += `@media (max-width: 767px) { .site-card p { ${mobileCardDescStyle} } }`;
@@ -510,9 +525,14 @@ export async function onRequest(context) {
   html = html.replace('</head>', headInjections + '</head>');
 
   // 替换 body 标签 + 滚动容器
+  const pageStyleClasses = [
+    S.layout_card_style === 'style3' ? 'desktop-page-style3' : '',
+    S.mobile_layout_card_style === 'style3' ? 'mobile-page-style3' : '',
+    `category-pos-${categoryPosition}`,
+  ].filter(Boolean).join(' ');
   html = html.replace(
     '<body class="bg-secondary-50 font-sans text-gray-800">',
-    `<body class="bg-secondary-50 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-100 relative ${isCustomWallpaper ? 'custom-wallpaper' : ''}">${bgLayerHtml}<div id="app-scroll">`
+    `<body class="bg-secondary-50 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-100 relative ${isCustomWallpaper ? 'custom-wallpaper' : ''} ${pageStyleClasses}">${bgLayerHtml}<div id="app-scroll">`
   );
   html = html.replace('</body>', '</div></body>');
 

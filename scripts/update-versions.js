@@ -54,6 +54,7 @@ const HTML_FILES = {
     { file: 'public/js/admin-bookmarks.js', pattern: /\/js\/admin-bookmarks\.js\?v=[a-zA-Z0-9]+/ },
     { file: 'public/js/admin-batch.js', pattern: /\/js\/admin-batch\.js\?v=[a-zA-Z0-9]+/ },
     { file: 'public/js/admin-settings-defaults.js', pattern: /\/js\/admin-settings-defaults\.js\?v=[a-zA-Z0-9]+/ },
+    { file: 'public/js/wallpaper-defaults.js', pattern: /\/js\/wallpaper-defaults\.js\?v=[a-zA-Z0-9]+/ },
     { file: 'public/js/admin-settings-form.js', pattern: /\/js\/admin-settings-form\.js\?v=[a-zA-Z0-9]+/ },
     { file: 'public/js/admin-settings-core.js', pattern: /\/js\/admin-settings-core\.js\?v=[a-zA-Z0-9]+/ },
     { file: 'public/js/admin-settings-preview-shared.js', pattern: /\/js\/admin-settings-preview-shared\.js\?v=[a-zA-Z0-9]+/ },
@@ -96,11 +97,67 @@ function buildReplacement(filePath, hash) {
   return `${urlPath}?v=${hash}`;
 }
 
+
+/**
+ * 将 functions/lib/wallpaper-defaults.js 同步为前台 public/js/wallpaper-defaults.js
+ * 保证默认壁纸 URL 只有一处手改源。
+ */
+function syncWallpaperDefaults() {
+  const srcPath = path.join(ROOT_DIR, 'functions/lib/wallpaper-defaults.js');
+  const outPath = path.join(ROOT_DIR, 'public/js/wallpaper-defaults.js');
+  if (!fs.existsSync(srcPath)) {
+    console.warn('  ⚠️  缺少 functions/lib/wallpaper-defaults.js，跳过壁纸默认值同步');
+    return;
+  }
+
+  const src = fs.readFileSync(srcPath, 'utf8');
+  const match = src.match(/export const STYLE_DEFAULT_WALLPAPERS = \{[\s\S]*?\n\};/);
+  if (!match) {
+    throw new Error('无法从 functions/lib/wallpaper-defaults.js 解析 STYLE_DEFAULT_WALLPAPERS');
+  }
+
+  const objectLiteral = match[0].replace('export const STYLE_DEFAULT_WALLPAPERS', 'const STYLE_DEFAULT_WALLPAPERS');
+  const out = `/**
+ * 自动生成，请勿手改。
+ * 源文件: functions/lib/wallpaper-defaults.js
+ * 由 scripts/update-versions.js 同步生成
+ */
+(function (global) {
+  ${objectLiteral}
+
+  function getStyleDefaultWallpaper(cardStyle) {
+    return STYLE_DEFAULT_WALLPAPERS[cardStyle] || STYLE_DEFAULT_WALLPAPERS.style1;
+  }
+
+  function resolveWallpaperUrl(customWallpaper, cardStyle) {
+    const custom = String(customWallpaper || '').trim();
+    return custom || getStyleDefaultWallpaper(cardStyle || 'style1');
+  }
+
+  global.IoriWallpaperDefaults = {
+    STYLE_DEFAULT_WALLPAPERS: STYLE_DEFAULT_WALLPAPERS,
+    getStyleDefaultWallpaper: getStyleDefaultWallpaper,
+    resolveWallpaperUrl: resolveWallpaperUrl,
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+`;
+
+  const prev = fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf8') : null;
+  if (prev !== out) {
+    fs.writeFileSync(outPath, out, 'utf8');
+    console.log('  ✅ 已同步 public/js/wallpaper-defaults.js');
+  } else {
+    console.log('  ⏭️  public/js/wallpaper-defaults.js 已是最新');
+  }
+}
+
 /**
  * 主函数
  */
 function main() {
   console.log('📦 开始更新静态资源版本号...\n');
+  syncWallpaperDefaults();
+  console.log('');
   
   let totalUpdated = 0;
   let htmlFilesModified = [];

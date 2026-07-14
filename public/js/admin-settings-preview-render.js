@@ -63,7 +63,17 @@
       categoryFlow: shared.getRadioValue(refs.categoryFlowRadios, current.home_category_flow || 'single_line'),
       defaultCategory: shared.getPreviewInputValue(refs.homeDefaultCategorySelect, current.home_default_category || ''),
       ...cardSettings,
-      wallpaper: shared.normalizePreviewUrl(shared.getPreviewInputValue(refs.customWallpaperInput, current.layout_custom_wallpaper || '')),
+      wallpaper: (() => {
+        const custom = shared.normalizePreviewUrl(shared.getPreviewInputValue(refs.customWallpaperInput, current.layout_custom_wallpaper || ''));
+        if (custom) return custom;
+        // 壁纸按桌面卡片风格取默认值（唯一数据源：wallpaper-defaults）
+        const style = document.querySelector('#desktopCardSettingsPanel .card-style-btn.active')?.dataset?.style
+          || current.layout_card_style
+          || 'style1';
+        return ns.wallpaper?.resolveWallpaperUrl?.('', style)
+          || window.IoriWallpaperDefaults?.resolveWallpaperUrl?.('', style)
+          || '';
+      })(),
       bgBlur: !!refs.bgBlurSwitch?.checked,
       bgBlurIntensity: shared.getPreviewInputValueOrDefault(refs.bgBlurIntensityRange, current.layout_bg_blur_intensity, '0'),
       titleFont: shared.getPreviewInputValue(refs.homeTitleFontInput, current.home_title_font || ''),
@@ -119,6 +129,10 @@
     const hideCopyText = shared.shouldHideCopyTextForPreview(settings.previewDevice, settings.gridCols);
 
     grid.innerHTML = cards.map(card => {
+      const isNavigationTileStyle = settings.cardStyle === 'style3';
+      const hideCardCategory = isNavigationTileStyle || settings.hideCardCategory;
+      const hideCardDesc = isNavigationTileStyle || settings.hideCardDesc;
+      const hideCardLinks = isNavigationTileStyle || settings.hideCardLinks;
       const initial = shared.escapeHTML(card.name.slice(0, 1).toUpperCase() || '站');
       const nameHtml = shared.escapeHTML(card.name);
       const urlHtml = shared.escapeHTML(card.url);
@@ -136,20 +150,20 @@
         'overflow-hidden',
         'transition-all',
         settings.frosted ? '' : 'bg-white border border-primary-100/60 shadow-sm',
-        settings.cardStyle === 'style2' ? 'style-2' : '',
+        settings.cardStyle === 'style2' ? 'style-2' : (isNavigationTileStyle ? 'style-3' : ''),
         settings.frosted ? 'frosted frosted-glass-effect' : '',
-        settings.hideCardDesc ? 'is-desc-hidden' : '',
-        settings.hideCardLinks ? 'is-links-hidden' : '',
+        hideCardDesc ? 'is-desc-hidden' : '',
+        hideCardLinks ? 'is-links-hidden' : '',
       ].filter(Boolean).join(' ');
       const copyButtonClass = card.hasValidUrl
         ? 'bg-accent-100 text-accent-700 hover:bg-accent-200'
         : 'bg-gray-200 text-gray-400 cursor-not-allowed';
-      const categoryHtml = settings.hideCardCategory ? '' : `
+      const categoryHtml = hideCardCategory ? '' : `
                 <span class="preview-category site-category inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-xs font-medium bg-secondary-100 text-primary-700">
                   ${shared.escapeHTML(card.category)}
                 </span>`;
-      const descHtml = settings.hideCardDesc ? '' : `<p class="preview-desc mt-2 text-sm text-gray-600 leading-relaxed line-clamp-2" title="${shared.escapeHTML(card.desc)}">${shared.escapeHTML(card.desc)}</p>`;
-      const linkHtml = settings.hideCardLinks ? '' : `
+      const descHtml = hideCardDesc ? '' : `<p class="preview-desc mt-2 text-sm text-gray-600 leading-relaxed line-clamp-2" title="${shared.escapeHTML(card.desc)}">${shared.escapeHTML(card.desc)}</p>`;
+      const linkHtml = hideCardLinks ? '' : `
           <div class="preview-links mt-3 flex items-center justify-between">
             <span class="text-xs text-primary-600 truncate flex-1 min-w-0 mr-2" title="${displayUrlHtml}">${displayUrlHtml}</span>
             <button type="button" class="copy-btn relative flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors ${copyButtonClass}" data-url="${urlHtml}" ${card.hasValidUrl ? '' : 'disabled'}>
@@ -253,6 +267,7 @@
     root.classList.toggle('category-above-search', settings.categoryPosition === 'above_search');
     root.classList.toggle('category-below-search', settings.categoryPosition === 'below_search');
     root.classList.toggle('is-mobile-preview', isMobilePreview);
+    root.classList.toggle('uses-card-style-3', settings.cardStyle === 'style3');
     if (!isMobilePreview) root.classList.remove('mobile-menu-open');
     const fallbackGridCols = isMobilePreview ? 3 : 4;
     const maxGridCols = isMobilePreview ? 3 : 7;
@@ -285,7 +300,19 @@
       shared.applyTextStyle(description, settings.subtitleFont, settings.subtitleSize, settings.subtitleColor);
     }
 
-    if (searchEngines) searchEngines.style.display = settings.searchEngines ? 'flex' : 'none';
+    if (searchEngines) {
+      searchEngines.style.display = settings.searchEngines ? 'flex' : 'none';
+      searchEngines.querySelectorAll('.search-engine-option').forEach(option => {
+        // 选中态用 CSS 强调色，勿被书签标题色覆盖
+        if (option.classList.contains('active')) {
+          option.style.removeProperty('color');
+        } else if (settings.cardTitleColor) {
+          option.style.setProperty('color', settings.cardTitleColor, 'important');
+        } else {
+          option.style.removeProperty('color');
+        }
+      });
+    }
     if (adminIcon) adminIcon.style.display = settings.hideAdmin ? 'none' : '';
     if (sidebar) sidebar.style.display = (isHorizontal && !isMobilePreview) ? 'none' : '';
 

@@ -73,7 +73,14 @@
   }
 
  function collapseOverflowCategories(container) {
+    // 与首页一致：单行最多 8 个按钮 = 根分类（含「全部」）+ 「更多」
+    // 有「更多」时根分类最多 7 个；顶部/搜索框上/下位置数量一致
+    const MAX_VISIBLE_BUTTONS = 8;
+    const MAX_VISIBLE_ROOT_WITH_MORE = MAX_VISIBLE_BUTTONS - 1; // 7
     const availableWidth = container?.clientWidth || container?.parentElement?.clientWidth || 0;
+    const getVisibleRootItems = () => Array.from(container.children).filter(
+      item => !item.classList.contains('live-category-more-wrapper')
+    );
     const measureItemsWidth = () => {
       const styles = window.getComputedStyle(container);
       const gap = parseFloat(styles.columnGap || styles.gap || '0') || 0;
@@ -82,7 +89,10 @@
       ), 0);
     };
 
-    if (!availableWidth || measureItemsWidth() <= availableWidth) return;
+    if (!availableWidth) return;
+    const rootCount = getVisibleRootItems().length;
+    // 优先按数量统一：>7 才折叠，保证各位置都是 7+更多=8（窄屏再按宽度收）
+    if (rootCount <= MAX_VISIBLE_ROOT_WITH_MORE && measureItemsWidth() <= availableWidth) return;
 
     container.insertAdjacentHTML('beforeend', getMoreCategoryHtml(false));
     const moreWrapper = container.querySelector('.live-category-more-wrapper');
@@ -91,8 +101,18 @@
     const visibleItems = Array.from(container.children).filter(item => item !== moreWrapper);
     let hiddenHasActive = false;
 
-    while (visibleItems.length > 0 && measureItemsWidth() > availableWidth) {
+    while (visibleItems.length > MAX_VISIBLE_ROOT_WITH_MORE) {
       const hiddenItem = visibleItems.pop();
+      if (!hiddenItem) break;
+      hiddenHasActive = hiddenHasActive
+        || hiddenItem.classList.contains('active')
+        || Boolean(hiddenItem.querySelector?.('.active'));
+      moreDropdown?.insertBefore(hiddenItem, moreDropdown.firstChild);
+    }
+
+    while (visibleItems.length > 1 && measureItemsWidth() > availableWidth) {
+      const hiddenItem = visibleItems.pop();
+      if (!hiddenItem) break;
       hiddenHasActive = hiddenHasActive
         || hiddenItem.classList.contains('active')
         || Boolean(hiddenItem.querySelector?.('.active'));

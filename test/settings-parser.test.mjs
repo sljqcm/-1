@@ -95,6 +95,9 @@ test('normalizeSettingValueForStorage validates style and enum settings', () => 
   assert.equal(normalizeSettingValueForStorage('layout_grid_cols', '9').ok, false);
   assert.deepEqual(normalizeSettingValueForStorage('mobile_layout_grid_cols', '3'), { ok: true, value: '3' });
   assert.equal(normalizeSettingValueForStorage('mobile_layout_grid_cols', '4').ok, false);
+  assert.deepEqual(normalizeSettingValueForStorage('layout_card_style', 'style3'), { ok: true, value: 'style3' });
+  assert.deepEqual(normalizeSettingValueForStorage('mobile_layout_card_style', 'style3'), { ok: true, value: 'style3' });
+  assert.equal(normalizeSettingValueForStorage('layout_card_style', 'style4').ok, false);
   assert.deepEqual(normalizeSettingValueForStorage('layout_card_animation', 'radial'), { ok: true, value: 'radial' });
   assert.deepEqual(normalizeSettingValueForStorage('mobile_layout_card_animation', 'random'), { ok: true, value: 'random' });
   assert.deepEqual(normalizeSettingValueForStorage('layout_card_animation', 'random'), { ok: true, value: 'random' });

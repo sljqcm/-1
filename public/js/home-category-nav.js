@@ -10,6 +10,7 @@
     let checkOverflow = () => { };
     let resetNav = () => { };
 
+    // moreWrapper 仅在设置「分类展示=单行」时由 SSR 输出；多行模式无此节点，不进入折叠逻辑
     if (navContainer && moreWrapper && moreBtn && dropdown) {
       resetNav = () => {
         const dropdownItems = Array.from(dropdown.children);
@@ -24,49 +25,101 @@
         moreBtn.classList.add('inactive');
       };
 
-      checkOverflow = () => {
-        resetNav();
+      const getCategories = () => Array.from(navContainer.children).filter(el => el !== moreWrapper);
 
-        const navChildren = Array.from(navContainer.children).filter(el => el !== moreWrapper);
+      const getVisibleItems = () => Array.from(navContainer.children).filter((el) => {
+        if (el === moreWrapper) return !moreWrapper.classList.contains('hidden');
+        return true;
+      });
+
+      // 单行统一为最多 8 个按钮：根分类（含「全部」）+ 「更多」
+      // 有「更多」时根分类最多 7 个；顶部/搜索框上/下位置数量一致
+      const MAX_VISIBLE_BUTTONS = 8;
+      const MAX_VISIBLE_ROOT_WITH_MORE = MAX_VISIBLE_BUTTONS - 1; // 7
+
+      // 与后台预览 collapseOverflowCategories 一致：按可用宽度折叠
+      const measureItemsWidth = () => {
+        const styles = window.getComputedStyle(navContainer);
+        const gap = parseFloat(styles.columnGap || styles.gap || '0') || 0;
+        return getVisibleItems().reduce((total, item, index) => (
+          total + item.offsetWidth + (index > 0 ? gap : 0)
+        ), 0);
+      };
+
+      const needsCollapse = (availableWidth) => {
+        const count = getCategories().length;
+        // 超过 7 个根分类，或宽度放不下（名称很长/窄屏）
+        if (count > MAX_VISIBLE_ROOT_WITH_MORE) return true;
+        void navContainer.offsetWidth;
+        return measureItemsWidth() > availableWidth;
+      };
+
+      const moveCategoryToDropdown = (lastCategory) => {
+        if (!lastCategory.dataset.originalClass) {
+          lastCategory.dataset.originalClass = lastCategory.className;
+        }
+
+        lastCategory.className = 'menu-item-wrapper block w-full relative';
+
+        const link = lastCategory.querySelector('a');
+        if (link) {
+          link.dataset.originalClass = link.className;
+          const isActive = link.classList.contains('active');
+          link.className = 'dropdown-item w-full text-left px-4 py-2 text-sm';
+          if (isActive) link.classList.add('active');
+        }
+
+        dropdown.insertBefore(lastCategory, dropdown.firstChild);
+      };
+
+      const restoreCategoryFromDropdown = () => {
+        const item = dropdown.firstElementChild;
+        if (!item) return null;
+        if (item.dataset.originalClass) item.className = item.dataset.originalClass;
+        const link = item.querySelector('a');
+        if (link && link.dataset.originalClass) link.className = link.dataset.originalClass;
+        navContainer.insertBefore(item, moreWrapper);
+        return item;
+      };
+
+      checkOverflow = () => {
+        // 「更多」打开时不要 reset，否则会拆掉弹出层并关菜单
+        if (!dropdown.classList.contains('hidden')) return;
+
+        resetNav();
+        // 必须 visible，否则多级 hover 下拉与 #horizontalMoreDropdown 会被裁切
+        navContainer.style.overflow = 'visible';
+        if (navContainer.parentElement) {
+          navContainer.parentElement.style.overflow = 'visible';
+        }
+
+        const navChildren = getCategories();
         if (navChildren.length === 0) return;
 
-        const firstTop = navChildren[0].offsetTop;
-        const lastItem = navChildren[navChildren.length - 1];
+        const availableWidth = navContainer.clientWidth || navContainer.parentElement?.clientWidth || 0;
+        // 布局未完成时跳过，后续 ResizeObserver / fonts 会再算
+        if (availableWidth < 48) return;
 
-        if (lastItem.offsetTop === firstTop) {
-          navContainer.style.overflow = 'visible';
-          return;
-        }
+        // 1) 根分类 >7 → 先收到 7 个，保证各位置统一为 7+更多=8
+        // 2) 宽度仍不够（≤7 但名称很长/窄屏）→ 继续按宽度收，至少保留 1 个
+        void navContainer.offsetWidth;
+        if (!needsCollapse(availableWidth)) return;
 
         moreWrapper.classList.remove('hidden');
 
-        while (true) {
-          const currentCategories = Array.from(navContainer.children).filter(el => el !== moreWrapper && el.style.display !== 'none');
-          if (currentCategories.length === 0) break;
+        while (getCategories().length > MAX_VISIBLE_ROOT_WITH_MORE) {
+          const cats = getCategories();
+          moveCategoryToDropdown(cats[cats.length - 1]);
+        }
 
-          const lastCategory = currentCategories[currentCategories.length - 1];
-          const moreWrapperWraps = moreWrapper.offsetTop > firstTop;
-          const lastCategoryWraps = lastCategory.offsetTop > firstTop;
+        while (getCategories().length > 1 && measureItemsWidth() > availableWidth) {
+          const cats = getCategories();
+          moveCategoryToDropdown(cats[cats.length - 1]);
+        }
 
-          if (!moreWrapperWraps && !lastCategoryWraps) {
-            break;
-          }
-
-          if (!lastCategory.dataset.originalClass) {
-            lastCategory.dataset.originalClass = lastCategory.className;
-          }
-
-          lastCategory.className = 'menu-item-wrapper block w-full relative';
-
-          const link = lastCategory.querySelector('a');
-          if (link) {
-            link.dataset.originalClass = link.className;
-            const isActive = link.classList.contains('active');
-            link.className = 'dropdown-item w-full text-left px-4 py-2 text-sm';
-            if (isActive) link.classList.add('active');
-          }
-
-          dropdown.insertBefore(lastCategory, dropdown.firstChild);
+        // 禁止只剩「···」
+        if (getCategories().length === 0) {
+          restoreCategoryFromDropdown();
         }
 
         const activeInDropdown = dropdown.querySelector('.active');
@@ -74,25 +127,45 @@
           moreBtn.classList.add('active');
           moreBtn.classList.remove('inactive');
           moreBtn.classList.add('text-primary-600', 'bg-secondary-100');
+        } else {
+          moreBtn.classList.remove('active', 'text-primary-600', 'bg-secondary-100');
+          moreBtn.classList.add('inactive');
         }
-
-        navContainer.style.overflow = 'visible';
       };
 
-      setTimeout(checkOverflow, 100);
-      window.addEventListener('resize', () => {
+      const scheduleOverflowCheck = () => {
         clearTimeout(window.resizeTimer);
-        window.resizeTimer = setTimeout(checkOverflow, 100);
+        window.resizeTimer = setTimeout(checkOverflow, 50);
+      };
+
+      // 首屏多次测量：覆盖字体加载与异步布局
+      requestAnimationFrame(() => {
+        requestAnimationFrame(checkOverflow);
       });
+      setTimeout(checkOverflow, 100);
+      setTimeout(checkOverflow, 400);
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(scheduleOverflowCheck).catch(() => {});
+      }
+
+      window.addEventListener('resize', scheduleOverflowCheck);
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(scheduleOverflowCheck);
+        ro.observe(navContainer);
+        if (navContainer.parentElement) ro.observe(navContainer.parentElement);
+      }
 
       moreBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         if (isHidden) {
           dropdown.classList.remove('hidden');
+          dropdown.classList.add('show');
           document.body.classList.add('menu-open');
         } else {
           dropdown.classList.add('hidden');
+          dropdown.classList.remove('show');
           document.body.classList.remove('menu-open');
         }
       });
@@ -101,6 +174,7 @@
         const link = e.target.closest('a');
         if (link) {
           dropdown.classList.add('hidden');
+          dropdown.classList.remove('show');
           document.body.classList.remove('menu-open');
         }
       });
@@ -108,6 +182,7 @@
       document.addEventListener('click', (e) => {
         if (!dropdown.contains(e.target) && !moreBtn.contains(e.target)) {
           dropdown.classList.add('hidden');
+          dropdown.classList.remove('show');
           document.body.classList.remove('menu-open');
         }
       });

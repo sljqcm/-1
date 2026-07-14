@@ -30,17 +30,13 @@
 
 ## 🖼️ 效果预览
 
-| 首页 | 后台管理 |
+| 风格一 | 风格一 |
 | :---: | :---: |
-| ![首页预览](https://github.com/user-attachments/assets/b106be25-5be4-4ae6-98aa-e1fae38b5a3d) | ![后台预览](https://github.com/user-attachments/assets/49461d13-e48b-400d-b15c-3fa2d1a0460e) |
+| ![风格一预览 1](./image/fengge1_1.png) | ![风格一预览 2](./image/fengge1_2.png) |
 
-| 大卡片 | 小卡片 |
+| 风格二 | 风格三 |
 | :---: | :---: |
-| ![大卡片预览](https://github.com/user-attachments/assets/e77d1c10-aba4-4755-8a62-416fe3a8239e) | ![小卡片预览](https://github.com/user-attachments/assets/b2508b55-bbf6-4998-a111-a7b75eb8686b) |
-
-| 简洁风格 | 夜间模式 |
-| :---: | :---: |
-| ![简洁风格预览](https://github.com/user-attachments/assets/3a70b18a-5301-4218-a75f-869fbbdaa7a4) | ![夜间模式预览](https://github.com/user-attachments/assets/9e51cf5c-4064-4b8d-ad2c-e0ca9e006834) |
+| ![风格二预览](./image/fengge2.png) | ![风格三预览](./image/fengge3.png) |
 
 | 桌面设置界面 | 移动设置界面 |
 | :---: | :---: |
@@ -241,6 +237,12 @@ npx wrangler d1 execute book --local --file=schema.sql
 ## 📋 更新日志
 
 <!-- changelog:start -->
+- 📂 **2026-07-14**：增加卡片风格三，风格增加默认壁纸
+- 🔧 **2026-06-23**：清理 AI 设置调试日志
+- 📂 **2026-06-21**：增强分类结构与私密数据支持
+- 🛡️ **2026-06-20**：优化登录会话与安全防护
+- 📦 **2026-06-09**：增强导入导出与批量管理能力
+- 🎨 **2026-06-08**：优化卡片样式与后台界面体验
 - 🎨 **2026-06-07**：增加手机卡片设置
 - 🎨 **2026-06-06**：首页设置预览与页脚优化
 - 🎞️ **2026-06-05**：新增卡片动画并隐藏图标

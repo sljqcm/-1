@@ -216,11 +216,11 @@ export function normalizeSettingValueForStorage(key, value) {
         return { ok: false, message: 'Invalid home_category_flow' };
     }
 
-    if (key === 'layout_card_style' && !['style1', 'style2'].includes(text)) {
+    if (key === 'layout_card_style' && !['style1', 'style2', 'style3'].includes(text)) {
         return { ok: false, message: 'Invalid layout_card_style' };
     }
 
-    if (key === 'mobile_layout_card_style' && !['style1', 'style2'].includes(text)) {
+    if (key === 'mobile_layout_card_style' && !['style1', 'style2', 'style3'].includes(text)) {
         return { ok: false, message: 'Invalid mobile_layout_card_style' };
     }
 

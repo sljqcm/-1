@@ -117,6 +117,29 @@ test('home page does not render the retired GitHub shortcut icon', async () => {
   assert.equal(html.includes('hideGithubSwitch'), false);
 });
 
+test('home uses style default wallpaper when custom wallpaper is empty', async () => {
+  const style1Html = await renderHome([
+    { key: 'layout_card_style', value: 'style1' },
+  ]);
+  const style2Html = await renderHome([
+    { key: 'layout_card_style', value: 'style2' },
+  ]);
+  const style3Html = await renderHome([
+    { key: 'layout_card_style', value: 'style3' },
+  ]);
+  const customHtml = await renderHome([
+    { key: 'layout_card_style', value: 'style3' },
+    { key: 'layout_custom_wallpaper', value: 'https://example.com/custom-bg.jpg' },
+  ]);
+
+  assert.match(style1Html, /src="https:\/\/img\.peapix\.com\/dc6e559cacb14f9c83b46d5a7f189bab_1920\.jpg"/);
+  assert.match(style2Html, /src="https:\/\/img\.peapix\.com\/1f4688b7a0d64bda9c508f9498b04f49_1920\.jpg"/);
+  assert.match(style3Html, /src="https:\/\/main\.ssss\.nyc\.mn\/background\.webp"/);
+  assert.match(style3Html, /custom-wallpaper/);
+  assert.match(customHtml, /src="https:\/\/example\.com\/custom-bg\.jpg"/);
+  assert.doesNotMatch(customHtml, /main\.ssss\.nyc\.mn\/background\.webp/);
+});
+
 test('home footer text can be configured from settings', async () => {
   const defaultHtml = await renderHome();
   const configuredHtml = await renderHome([
@@ -147,6 +170,62 @@ test('home grid marks the configured mobile card style', async () => {
   ]);
 
   assert.match(styleOneHtml, /id="sitesGrid" class="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 mobile-card-style1/);
+});
+
+test('home grid marks style three independently for desktop and mobile', async () => {
+  const html = await renderHome([
+    { key: 'layout_card_style', value: 'style3' },
+    { key: 'mobile_layout_card_style', value: 'style3' },
+  ]);
+
+  assert.match(html, /id="sitesGrid" class="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 mobile-card-style3 desktop-card-style3/);
+  assert.match(html, /class="site-card[^"\n]*style-3/);
+  assert.match(html, /desktop-page-style3 mobile-page-style3/);
+  assert.match(html, /class="home-search-shell/);
+});
+
+test('style three with category on top marks body class for compact top nav', async () => {
+  const html = await renderHome([
+    { key: 'layout_card_style', value: 'style3' },
+    { key: 'home_category_position', value: 'top' },
+  ]);
+
+  assert.match(html, /category-pos-top/);
+  assert.match(html, /category-nav-top-wrap/);
+  assert.match(html, /desktop-page-style3/);
+});
+
+test('style three keeps the standard search engine set and order', async () => {
+  const html = await renderHome([
+    { key: 'layout_card_style', value: 'style3' },
+    { key: 'home_search_engine_enabled', value: 'true' },
+  ]);
+
+  const localIndex = html.indexOf('data-engine="local"');
+  const googleIndex = html.indexOf('data-engine="google"');
+  const baiduIndex = html.indexOf('data-engine="baidu"');
+  const githubIndex = html.indexOf('data-engine="github"');
+
+  assert.ok(localIndex > -1);
+  assert.ok(localIndex < googleIndex);
+  assert.ok(googleIndex < baiduIndex);
+  assert.ok(baiduIndex < githubIndex);
+  assert.match(html, /data-engine="local"><span>站内<\/span>/);
+  assert.match(html, /data-engine="google"><span>Google<\/span>/);
+  assert.match(html, /data-engine="baidu"><span>Baidu<\/span>/);
+  assert.match(html, /data-engine="github"><span>Github<\/span>/);
+  assert.doesNotMatch(html, /data-engine="bing"/);
+});
+
+test('external search inherits desktop and mobile bookmark title colors', async () => {
+  const html = await renderHome([
+    { key: 'card_title_color', value: '#123456' },
+    { key: 'mobile_card_title_color', value: 'rgba(240, 240, 240, 0.9)' },
+  ]);
+
+  assert.match(html, /@media \(min-width: 768px\) \{ body \{ --desktop-card-title-color: #123456; \} \}/);
+  assert.match(html, /@media \(max-width: 767px\) \{ body \{ --mobile-card-title-color: rgba\(240, 240, 240, 0\.9\); \} \}/);
+  assert.doesNotMatch(html, /--desktop-card-title-(?:font|size)/);
 });
 
 test('home card radius and frosted blur preserve zero values', async () => {

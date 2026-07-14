@@ -269,7 +269,7 @@
 
     currentSettings.layout_enable_frosted_glass = !!refs.frostedGlassSwitch?.checked;
     currentSettings.layout_frosted_glass_intensity = refs.frostedGlassIntensityRange?.value || '15';
-    currentSettings.layout_card_style = document.getElementById('btnStyle2')?.classList.contains('active') ? 'style2' : 'style1';
+    currentSettings.layout_card_style = document.querySelector('#desktopCardSettingsPanel .card-style-btn.active')?.dataset.style || 'style1';
     currentSettings.layout_card_animation = refs.cardAnimationSelect?.value || 'radial';
     currentSettings.layout_card_border_radius = refs.cardRadiusInput?.value || '12';
     currentSettings.card_title_font = refs.cardTitleFontInput?.value.trim() || '';
@@ -290,7 +290,7 @@
         break;
       }
     }
-    currentSettings.mobile_layout_card_style = document.getElementById('mobileBtnStyle2')?.classList.contains('active') ? 'style2' : 'style1';
+    currentSettings.mobile_layout_card_style = document.querySelector('#mobileCardSettingsPanel .card-style-btn.active')?.dataset.style || 'style2';
     currentSettings.mobile_layout_card_animation = refs.mobileCardAnimationSelect?.value || 'radial';
     currentSettings.mobile_layout_card_border_radius = refs.mobileCardRadiusInput?.value || '12';
     currentSettings.mobile_card_title_font = refs.mobileCardTitleFontInput?.value.trim() || '';
@@ -387,6 +387,12 @@
     setRangeValue(refs.frostedGlassIntensityRange, refs.frostedGlassIntensityValue, currentSettings.layout_frosted_glass_intensity || '15');
     updateToggleContainer(refs.frostedGlassSwitch, 'frostedGlassIntensityContainer');
     setValue(refs.customWallpaperInput, currentSettings.layout_custom_wallpaper || '');
+    if (refs.customWallpaperInput && !String(currentSettings.layout_custom_wallpaper || '').trim()) {
+      const style = currentSettings.layout_card_style || 'style1';
+      refs.customWallpaperInput.placeholder = ns.wallpaper?.getStyleDefaultWallpaper?.(style)
+        || refs.customWallpaperInput.placeholder
+        || 'https://example.com/wallpaper.jpg';
+    }
     setChecked(refs.bgBlurSwitch, currentSettings.layout_enable_bg_blur);
     setRangeValue(refs.bgBlurIntensityRange, refs.bgBlurIntensityValue, currentSettings.layout_bg_blur_intensity || '0');
     updateToggleContainer(refs.bgBlurSwitch, 'bgBlurIntensityContainer');

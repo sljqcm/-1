@@ -77,6 +77,10 @@
 
   function initModalEvents(refs) {
     refs.settingsBtn.addEventListener('click', () => {
+      if (refs.customWallpaperInput) {
+        refs.customWallpaperInput.readOnly = true;
+        refs.customWallpaperInput.setAttribute('readonly', '');
+      }
       loadSettings();
       refs.settingsModal.style.display = 'block';
       document.body.classList.add('modal-open');
@@ -190,6 +194,20 @@
     });
   }
 
+  function initAutofillGuards(refs) {
+    const wallpaperInput = refs.customWallpaperInput;
+    if (!wallpaperInput) return;
+
+    const unlockWallpaperInput = () => {
+      wallpaperInput.readOnly = false;
+      wallpaperInput.removeAttribute('readonly');
+    };
+
+    wallpaperInput.addEventListener('pointerdown', unlockWallpaperInput);
+    wallpaperInput.addEventListener('focus', unlockWallpaperInput);
+    wallpaperInput.addEventListener('keydown', unlockWallpaperInput);
+  }
+
   function init() {
     const refs = getRefs();
     if (!refs.settingsBtn || !refs.settingsModal) return false;
@@ -197,6 +215,7 @@
     initTabEvents(refs);
     initCardDeviceTabs();
     initFormEvents(refs);
+    initAutofillGuards(refs);
     return true;
   }
 
