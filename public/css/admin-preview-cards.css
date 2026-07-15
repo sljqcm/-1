@@ -23,14 +23,16 @@
   padding: 2rem 1.5rem;
   border-top: 1px solid rgba(219, 234, 254, 0.7);
   background: rgba(255, 255, 255, 0.8);
-  color: #6b7280;
+  /* 风格一/二：黑色页脚文字 */
+  color: #111827;
   text-align: center;
 }
 
 .home-live-preview.has-wallpaper .live-preview-footer {
   border: 0;
   background: transparent;
-  color: #000;
+  /* 有壁纸时风格一/二仍用黑色，保证浅色壁纸可读 */
+  color: #111827;
 }
 
 .live-preview-footer-inner {
@@ -53,11 +55,19 @@
 }
 
 .live-preview-footer-separator {
-  color: #d1d5db;
+  color: rgba(17, 24, 39, 0.35);
 }
 
 .live-preview-footer p {
   margin: 0;
+}
+
+/* 与 eooce/Nav-Item 页脚字体一致：桌面 14px，移动端 0.7rem */
+.live-preview-footer,
+.live-preview-footer a,
+.live-preview-footer p,
+.live-preview-footer span {
+  font-size: 14px;
 }
 
 .live-card {
@@ -368,7 +378,8 @@
   justify-content: center;
   width: 25px;
   height: 25px;
-  margin: 4px auto;
+  /* 图标与下方标题间距：原先四边 4px，现改为下方 8px */
+  margin: 0 auto 8px;
   opacity: 1;
   flex-shrink: 0;
 }
@@ -427,6 +438,7 @@
 .home-live-preview.uses-card-style-3 .live-preview-footer {
   border: 0;
   background: transparent;
+  /* 风格三：白色页脚文字 */
   color: #ffffff;
 }
 
@@ -588,6 +600,19 @@
 .home-live-preview[data-device="mobile"] .live-preview-footer {
   margin-top: 2rem;
   padding: 1.5rem 1rem;
+}
+
+/* 手机预览不区分卡片风格，页脚统一使用白色文字 */
+.home-live-preview[data-device="mobile"] .live-preview-footer,
+.home-live-preview[data-device="mobile"] .live-preview-footer a,
+.home-live-preview[data-device="mobile"] .live-preview-footer p,
+.home-live-preview[data-device="mobile"] .live-preview-footer span {
+  color: #ffffff !important;
+  font-size: 0.7rem;
+}
+
+.home-live-preview[data-device="mobile"] .live-preview-footer-separator {
+  color: rgba(255, 255, 255, 0.35) !important;
 }
 
 .home-live-preview[data-device="mobile"] .live-preview-footer-inner {

@@ -26,6 +26,41 @@
 #app-scroll > .main-content > footer {
   flex-shrink: 0;
   margin-top: auto;
+  /* 与 eooce/Nav-Item 页脚字体一致：桌面 14px，移动端 0.7rem */
+  font-size: 14px;
+  /* 桌面风格一/二：黑色；桌面风格三在下方 media 中覆盖为白色 */
+  color: #111827;
+}
+
+/* 仅继承字号，不锁死 color，避免盖掉 hover:text-primary-500 */
+#app-scroll > .main-content > footer a,
+#app-scroll > .main-content > footer p,
+#app-scroll > .main-content > footer span {
+  font-size: inherit;
+}
+
+#app-scroll > .main-content > footer .text-gray-300 {
+  color: rgba(17, 24, 39, 0.35);
+}
+
+@media (max-width: 768px) {
+  #app-scroll > .main-content > footer {
+    font-size: 0.7rem;
+  }
+}
+
+/* 手机端不区分卡片风格，页脚统一使用白色文字 */
+@media (max-width: 767px) {
+  #app-scroll > .main-content > footer,
+  #app-scroll > .main-content > footer a,
+  #app-scroll > .main-content > footer p,
+  #app-scroll > .main-content > footer span {
+    color: #ffffff !important;
+  }
+
+  #app-scroll > .main-content > footer .text-gray-300 {
+    color: rgba(255, 255, 255, 0.35) !important;
+  }
 }
 
 /* ========================================= */
@@ -639,7 +674,8 @@ html.dark body.custom-wallpaper .site-card.style-3.frosted-glass-effect:hover {
   justify-content: center;
   width: 25px;
   height: 25px;
-  margin: 4px auto;
+  /* 图标与下方标题间距：原先四边 4px，现改为下方 8px */
+  margin: 0 auto 8px;
   opacity: 1;
   flex-shrink: 0;
 }
@@ -1527,6 +1563,122 @@ body .search-engine-option.active {
 
   body.mobile-page-style3 footer .text-gray-300 {
     color: rgba(255, 255, 255, 0.35) !important;
+  }
+}
+
+/* 风格三下拉分类（仅桌面水平分类）：参考 eooce/Nav-Item 透明毛玻璃 + 白字蓝高亮
+   手机端走左上角侧栏滑出，无水平下拉 */
+@media (min-width: 768px) {
+  body.desktop-page-style3 .dropdown-menu,
+  body.desktop-page-style3 #horizontalMoreDropdown,
+  html.dark body.desktop-page-style3 .dropdown-menu,
+  html.dark body.desktop-page-style3 #horizontalMoreDropdown {
+    background: transparent !important;
+    background-color: transparent !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    min-width: 120px;
+    max-width: none;
+    width: max-content;
+    padding: 0.15rem 0;
+    margin-top: -2px;
+    color: #fff;
+  }
+
+  body.desktop-page-style3 .dropdown-menu .menu-item-wrapper .dropdown-menu,
+  body.desktop-page-style3 #horizontalMoreDropdown .dropdown-menu {
+    background: transparent !important;
+    background-color: transparent !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    margin-top: 0;
+  }
+
+  body.desktop-page-style3 .dropdown-item,
+  body.desktop-page-style3 #horizontalMoreDropdown .dropdown-item,
+  body.desktop-page-style3.custom-wallpaper .dropdown-item,
+  body.desktop-page-style3.custom-wallpaper #horizontalMoreDropdown .dropdown-item,
+  html.dark body.desktop-page-style3 .dropdown-item,
+  html.dark body.desktop-page-style3 #horizontalMoreDropdown .dropdown-item,
+  html:not(.dark) body.desktop-page-style3 .dropdown-item {
+    display: flex !important;
+    align-items: center;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0;
+    height: auto !important;
+    padding: 0.4rem 1rem !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #fff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    font-size: 0.875rem !important;
+    font-weight: 400 !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+    text-shadow: none !important;
+    white-space: nowrap;
+  }
+
+  body.desktop-page-style3 .dropdown-item:hover,
+  body.desktop-page-style3 #horizontalMoreDropdown .dropdown-item:hover,
+  body.desktop-page-style3.custom-wallpaper .dropdown-item:hover,
+  body.desktop-page-style3.custom-wallpaper #horizontalMoreDropdown .dropdown-item:hover,
+  html.dark body.desktop-page-style3 .dropdown-item:hover,
+  html.dark body.desktop-page-style3 #horizontalMoreDropdown .dropdown-item:hover,
+  html:not(.dark) body.desktop-page-style3 .dropdown-item:hover {
+    background: rgba(57, 157, 255, 0.25) !important;
+    background-color: rgba(57, 157, 255, 0.25) !important;
+    color: #399dff !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  body.desktop-page-style3 .dropdown-item.active,
+  body.desktop-page-style3 #horizontalMoreDropdown .dropdown-item.active,
+  body.desktop-page-style3.custom-wallpaper .dropdown-item.active,
+  body.desktop-page-style3.custom-wallpaper #horizontalMoreDropdown .dropdown-item.active,
+  html.dark body.desktop-page-style3 .dropdown-item.active,
+  html.dark body.desktop-page-style3 #horizontalMoreDropdown .dropdown-item.active,
+  html:not(.dark) body.desktop-page-style3 .dropdown-item.active {
+    background: rgba(57, 157, 255, 0.35) !important;
+    background-color: rgba(57, 157, 255, 0.35) !important;
+    color: #399dff !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+  }
+
+  /* 风格三下拉不显示底部蓝线伪元素 */
+  body.desktop-page-style3 .dropdown-item::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  body.desktop-page-style3 .dropdown-arrow-icon {
+    margin-left: 0.35rem;
+    color: rgba(255, 255, 255, 0.7);
+    opacity: 0.7;
+  }
+
+  body.desktop-page-style3 .dropdown-item:hover .dropdown-arrow-icon,
+  body.desktop-page-style3 .dropdown-item.active .dropdown-arrow-icon {
+    color: #399dff;
+    opacity: 1;
+  }
+
+  body.desktop-page-style3 .nav-btn > svg {
+    color: inherit;
+    opacity: 0.75;
   }
 }
 

@@ -251,6 +251,17 @@ test('style three CSS keeps the compact glass navigation treatment', () => {
   assert.match(css, /body\.mobile-page-style3 footer/);
 });
 
+test('footer colors follow desktop card style and stay white on mobile', () => {
+  const homeCss = readFileSync('public/css/style.css', 'utf8');
+  const previewCss = readFileSync('public/css/admin-preview-cards.css', 'utf8');
+
+  assert.match(homeCss, /#app-scroll > \.main-content > footer \{[\s\S]*?color:\s*#111827;/);
+  assert.match(homeCss, /@media \(min-width:\s*768px\)[\s\S]*?body\.desktop-page-style3 footer,[\s\S]*?color:\s*#ffffff\s*!important;/);
+  assert.match(homeCss, /@media \(max-width:\s*767px\)[\s\S]*?#app-scroll > \.main-content > footer,[\s\S]*?color:\s*#ffffff\s*!important;/);
+  assert.doesNotMatch(homeCss, /html\.dark body:not\(\.custom-wallpaper\) #app-scroll > \.main-content > footer/);
+  assert.match(previewCss, /\.home-live-preview\[data-device="mobile"\] \.live-preview-footer,[\s\S]*?color:\s*#ffffff\s*!important;/);
+});
+
 test('style three search focus suppresses the transient Tailwind ring', () => {
   const css = readFileSync('public/css/style.css', 'utf8');
 
