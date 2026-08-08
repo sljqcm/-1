@@ -122,6 +122,13 @@
           restoreCategoryFromDropdown();
         }
 
+        // 折叠区仅剩 1 个分类时直接展示，不为 1 个分类留「···」：
+        // 「···」只比一个分类按钮窄约 48px，折叠换不来实际空间
+        if (dropdown.children.length === 1) {
+          restoreCategoryFromDropdown();
+          moreWrapper.classList.add('hidden');
+        }
+
         const activeInDropdown = dropdown.querySelector('.active');
         if (activeInDropdown) {
           moreBtn.classList.add('active');

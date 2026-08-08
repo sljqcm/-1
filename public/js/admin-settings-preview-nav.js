@@ -119,6 +119,14 @@
       moreDropdown?.insertBefore(hiddenItem, moreDropdown.firstChild);
     }
 
+    // 折叠区仅剩 1 个分类时直接展示，不为 1 个分类留「···」：
+    // 「···」只比一个分类按钮窄约 48px，折叠换不来实际空间
+    if (moreDropdown?.children.length === 1 && moreWrapper) {
+      container.insertBefore(moreDropdown.firstElementChild, moreWrapper);
+      moreWrapper.remove();
+      return;
+    }
+
     if (moreButton) {
       moreButton.classList.toggle('active', hiddenHasActive);
     }
