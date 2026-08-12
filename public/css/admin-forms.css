@@ -181,6 +181,75 @@
   background: #f0fdfa;
 }
 
+.library-item.selected {
+  border-color: #14b8a6;
+  background: #ccfbf1;
+  box-shadow: 0 0 0 1px #14b8a6;
+}
+
+.webdav-backup-item {
+  padding: 0;
+  cursor: default;
+  overflow: hidden;
+}
+
+.webdav-backup-select {
+  min-width: 0;
+  flex: 1;
+  padding: 12px 4px 12px 14px;
+  text-align: left;
+}
+
+.webdav-backup-select .library-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.webdav-backup-meta {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.webdav-backup-filename {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.webdav-backup-size {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.webdav-backup-delete {
+  flex: 0 0 auto;
+  margin-right: 10px;
+}
+
+.webdav-backup-delete:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
+.webdav-backup-delete:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+
+.webdav-backup-empty {
+  padding: 22px 14px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
 .library-name {
   font-weight: 600;
   color: #111827;
@@ -313,5 +382,3 @@
   background-color: #e9ecef;
   cursor: not-allowed;
 }
-
-

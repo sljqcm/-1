@@ -7,16 +7,16 @@
   <title>书签管理页面</title>
   <link rel="icon" href="/favicon.svg?v=148aafdf" type="image/svg+xml">
   <link rel="stylesheet" href="/css/admin-layout.css?v=42e6c65a" />
-  <link rel="stylesheet" href="/css/admin-forms.css?v=08d58f56" />
+  <link rel="stylesheet" href="/css/admin-forms.css?v=ffc88cf4" />
   <link rel="stylesheet" href="/css/admin-card-options.css?v=55b9995c" />
   <link rel="stylesheet" href="/css/admin-preview-shell.css?v=82413550" />
   <link rel="stylesheet" href="/css/admin-preview-controls.css?v=7fa6812c" />
   <link rel="stylesheet" href="/css/admin-preview-cards.css?v=d0d0a9b0" />
-  <link rel="stylesheet" href="/css/admin-settings-modal.css?v=5fe5060a" />
-  <link rel="stylesheet" href="/css/admin-card-preview.css?v=a42c3dea" />
+  <link rel="stylesheet" href="/css/admin-settings-modal.css?v=aa21a839" />
+  <link rel="stylesheet" href="/css/admin-card-preview.css?v=ebc1ba0a" />
   <link rel="stylesheet" href="/css/admin-feedback.css?v=15b4dada" />
   <link rel="stylesheet" href="/css/admin-dropdown.css?v=9efddb85" />
-  <link rel="stylesheet" href="/css/tailwind.min.css?v=ebc3bac5">
+  <link rel="stylesheet" href="/css/tailwind.min.css?v=38e0a016">
 </head>
 
 <body>
@@ -147,6 +147,43 @@
         <div class="flex justify-end gap-3 mt-4">
           <button id="cancelLibraryBtn"
             class="px-4 py-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-sm">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WebDAV 备份恢复模态框 -->
+    <div id="webdavRestoreModal" class="modal" style="display: none; z-index: 2500;">
+      <div class="modal-content" style="max-width: 520px;">
+        <span class="modal-close" id="closeWebdavRestoreModal">×</span>
+        <h2>从 WebDAV 恢复备份</h2>
+        <p class="text-sm text-gray-500 mb-4">选择一个备份，下载后会进入导入预览，可再选择是否覆盖已存在的书签。</p>
+        <div id="webdavRestoreLoading" class="text-sm text-gray-500 my-4">正在获取备份列表...</div>
+        <div id="webdavRestoreError" class="error"
+          style="display: none; padding: 10px; border-radius: 4px; margin: 0 0 12px; font-size: 14px;"></div>
+        <div id="webdavBackupList" class="library-list" style="max-height: 42vh; overflow-y: auto;"></div>
+        <div class="flex justify-end gap-3 mt-4">
+          <button id="cancelWebdavRestoreBtn"
+            class="px-4 py-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-sm">取消</button>
+          <button id="webdavRestoreBtn"
+            class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm">立即恢复</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WebDAV 危险操作确认模态框：样式与书签删除确认保持一致 -->
+    <div id="webdavDeleteConfirmModal" class="modal" style="display: none; z-index: 3000;">
+      <div class="modal-content">
+        <span class="modal-close" id="closeWebdavDeleteConfirmModal">×</span>
+        <h2 id="webdavConfirmTitle">确认删除</h2>
+        <div class="p-4">
+          <p id="webdavConfirmMessage" class="text-gray-700 font-medium text-base mb-2">确定要删除该备份吗？</p>
+          <p id="webdavConfirmDescription" class="text-gray-500 text-sm">此操作无法撤销，请谨慎操作。</p>
+        </div>
+        <div class="flex justify-end gap-3 mt-4">
+          <button id="cancelWebdavDeleteBtn"
+            class="w-24 h-10 flex items-center justify-center bg-gray-100 text-gray-600 rounded hover:bg-gray-200 text-sm font-medium transition-colors">取消</button>
+          <button id="confirmWebdavDeleteBtn"
+            class="w-24 h-10 flex items-center justify-center bg-red-600 text-white rounded hover:bg-red-700 text-sm font-medium shadow-sm transition-colors">删除</button>
         </div>
       </div>
     </div>
@@ -584,10 +621,11 @@
 
         <div class="modal-body">
           <div class="settings-tabs">
-            <button class="settings-tab-btn active" data-tab="home-settings">首页设置</button>
-            <button class="settings-tab-btn" data-tab="layout-settings">卡片设置</button>
-            <button class="settings-tab-btn" data-tab="wallpaper-settings">壁纸设置</button>
-            <button class="settings-tab-btn" data-tab="ai-settings">AI 设置</button>
+            <button class="settings-tab-btn active" data-tab="home-settings">首页</button>
+            <button class="settings-tab-btn" data-tab="layout-settings">卡片</button>
+            <button class="settings-tab-btn" data-tab="wallpaper-settings">壁纸</button>
+            <button class="settings-tab-btn" data-tab="ai-settings">AI</button>
+            <button class="settings-tab-btn" data-tab="backup-settings">备份</button>
           </div>
 
           <!-- 首页设置内容 -->
@@ -1377,6 +1415,59 @@
               </div>
             </div>
           </div>
+
+          <!-- 备份设置内容 -->
+          <div id="backup-settings" class="settings-tab-content">
+            <div class="form-group-stack">
+              <div>
+                <label for="webdavUrl" class="form-label-icon"><span>🌐</span> WebDAV 服务器地址</label>
+                <input type="url" id="webdavUrl" placeholder="https://app.koofr.net/dav/Koofr" class="form-input"
+                  autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="url">
+                <p class="form-hint">仅支持 HTTPS。koofr 等服务需使用「应用密码」而非登录密码。</p>
+              </div>
+
+              <div>
+                <label for="webdavUsername" class="form-label-icon"><span>👤</span> 账号</label>
+                <input type="text" id="webdavUsername" placeholder="WebDAV 账号" class="form-input"
+                  autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+              </div>
+
+              <div>
+                <label for="webdavPassword" class="form-label-icon"><span>🔑</span> 密码 / 应用授权码</label>
+                <input type="password" id="webdavPassword" placeholder="请输入密码" class="form-input"
+                  autocomplete="new-password">
+                <button type="button" id="webdavClearPasswordBtn" class="webdav-clear-password"
+                  style="display: none;">清除已保存的密码</button>
+              </div>
+
+              <div>
+                <label for="webdavDir" class="form-label-icon"><span>📁</span> 备份目录</label>
+                <input type="text" id="webdavDir" placeholder="iori-nav" class="form-input"
+                  autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+                <p class="form-hint">相对服务器地址的子目录，留空则直接放在根目录。目录不存在时会自动创建。</p>
+              </div>
+            </div>
+
+            <div class="batch-actions-section" style="margin-top: 1rem;">
+              <div class="bulk-action-box">
+                <p class="form-hint">备份分类与书签（含私密内容），每次生成一个带 UTC 时间戳的新文件，历史版本会保留。不含系统设置与待审核列表。</p>
+                <button id="webdavBackupBtn" class="button-secondary">
+                  <span>☁️</span> 立即备份
+                </button>
+                <p id="webdavBackupStatus" class="form-hint" style="display: none;"></p>
+              </div>
+            </div>
+
+            <div class="batch-actions-section" style="margin-top: 1rem;">
+              <div class="bulk-action-box">
+                <p class="form-hint">从 WebDAV 拉取最近 10 次备份，选择一个后会进入导入预览，可选择是否覆盖已存在的书签。</p>
+                <button id="webdavListBtn" class="button-secondary">
+                  <span>🕑</span> 获取备份
+                </button>
+                <p id="webdavRestoreStatus" class="form-hint" style="display: none;"></p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="modal-footer">
@@ -1622,9 +1713,9 @@
   <script src="/js/admin-bookmarks.js?v=050f96b1"></script>
   <script src="/js/admin-batch.js?v=30d922a5"></script>
   <script src="/js/wallpaper-defaults.js?v=b65f42d1"></script>
-  <script src="/js/admin-settings-defaults.js?v=309e396c"></script>
-  <script src="/js/admin-settings-form.js?v=e48d6596"></script>
-  <script src="/js/admin-settings-core.js?v=7c31f3ce"></script>
+  <script src="/js/admin-settings-defaults.js?v=703e8e12"></script>
+  <script src="/js/admin-settings-form.js?v=a90b9ea0"></script>
+  <script src="/js/admin-settings-core.js?v=db242f68"></script>
   <script src="/js/admin-settings-preview-shared.js?v=3d0c2bf4"></script>
   <script src="/js/admin-settings-preview-data.js?v=3eddb596"></script>
   <script src="/js/admin-settings-preview-nav.js?v=bb83f239"></script>
@@ -1634,8 +1725,10 @@
   <script src="/js/admin-settings-preview.js?v=909bf2a1"></script>
   <script src="/js/admin-settings-wallpaper.js?v=948f7d65"></script>
   <script src="/js/admin-settings-ai.js?v=0d8c0558"></script>
-  <script src="/js/admin-settings.js?v=3d60c17b"></script>
-  <script src="/js/admin-import-export.js?v=a168cb23"></script>
+  <script src="/js/admin-settings-backup-ui.js?v=68eb553d"></script>
+  <script src="/js/admin-settings-backup.js?v=6673ac41"></script>
+  <script src="/js/admin-settings.js?v=22ceba7e"></script>
+  <script src="/js/admin-import-export.js?v=443f2c90"></script>
 </body>
 
 </html>

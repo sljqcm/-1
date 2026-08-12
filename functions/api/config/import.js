@@ -7,6 +7,8 @@ import {
     normalizeBookmarkName,
     normalizeBookmarkUrl,
     normalizeCategoryName,
+    IMPORT_BODY_MAX_BYTES,
+    IMPORT_BODY_MAX_MB,
     validateImportSizes,
 } from '../../lib/validators';
 
@@ -55,10 +57,10 @@ export async function onRequestPost(context) {
   }
 
   try {
-    // 限制请求体大小（最大 5MB）
+    // 限制请求体大小
     const contentLength = parseInt(request.headers.get('Content-Length') || '0', 10);
-    if (contentLength > 5 * 1024 * 1024) {
-      return errorResponse('请求体过大，最大允许 5MB', 413);
+    if (contentLength > IMPORT_BODY_MAX_BYTES) {
+      return errorResponse(`请求体过大，最大允许 ${IMPORT_BODY_MAX_MB}MB`, 413);
     }
 
     const jsonData = await request.json();
@@ -94,7 +96,7 @@ export async function onRequestPost(context) {
       return errorResponse(importSizeCheck.message, 400);
     }
 
-    if (sitesToImport.length === 0) {
+    if (sitesToImport.length === 0 && categoriesToImport.length === 0) {
       return jsonResponse({ code: 200, message: 'Import successful, but no sites were found to import.' });
     }
 

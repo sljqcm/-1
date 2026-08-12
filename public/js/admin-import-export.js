@@ -425,7 +425,12 @@ function showImportPreview(result) {
   
   const closePreview = () => {
       document.body.removeChild(previewModal);
-      document.body.classList.remove('modal-open'); // 恢复背景滚动
+      // WebDAV 恢复会从设置弹窗里打开预览；底层仍有弹窗时不能解除背景滚动锁。
+      const modals = document.querySelectorAll?.('.modal') || [];
+      const stillOpen = Array.from(modals).some(modal => (
+        modal.style?.display && modal.style.display !== 'none'
+      ));
+      if (!stillOpen) document.body.classList.remove('modal-open');
   };
 
   document.getElementById('closePreviewModal').onclick = closePreview;

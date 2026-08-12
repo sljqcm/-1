@@ -20,6 +20,7 @@
     'mobile_layout_enable_frosted_glass',
   ];
 
+  // 空串语义是「回退到默认值」，所以服务端给空值时跳过赋值，保留 createDefaultSettings 的默认
   const TRUTHY_STRING_FIELDS = [
     'provider',
     'baseUrl',
@@ -69,6 +70,15 @@
     'mobile_card_desc_font',
     'mobile_card_desc_size',
     'mobile_card_desc_color',
+  ];
+
+  // 空串是有效值而非「回退默认」，服务端给什么就是什么。
+  // webdav_dir 留空的语义是「备份放根目录」，用 truthy 判断会让清空操作被内存里的旧值顶掉。
+  const DEFINED_STRING_FIELDS = [
+    'bing_country',
+    'webdav_url',
+    'webdav_username',
+    'webdav_dir',
   ];
 
   const MOBILE_FALLBACK_FIELDS = [
@@ -152,6 +162,11 @@
       mobile_card_desc_font: '',
       mobile_card_desc_size: '11',
       mobile_card_desc_color: '',
+      webdav_url: '',
+      webdav_username: '',
+      webdav_password: '',
+      webdav_dir: '',
+      has_webdav_password: false,
     };
   }
 
@@ -174,6 +189,7 @@
     if (serverSettings.provider) targetSettings.provider = serverSettings.provider;
     targetSettings.has_api_key = !!serverSettings.has_api_key;
     if (serverSettings.apiKey) targetSettings.apiKey = serverSettings.apiKey;
+    targetSettings.has_webdav_password = !!serverSettings.has_webdav_password;
 
     BOOLEAN_FIELDS.forEach(field => {
       if (serverSettings[field] !== undefined) {
@@ -187,9 +203,11 @@
       }
     });
 
-    if (serverSettings.bing_country !== undefined) {
-      targetSettings.bing_country = serverSettings.bing_country;
-    }
+    DEFINED_STRING_FIELDS.forEach(field => {
+      if (serverSettings[field] !== undefined) {
+        targetSettings[field] = serverSettings[field];
+      }
+    });
 
     if (serverSettings.home_category_position === undefined && serverSettings.layout_menu_layout === 'vertical') {
       targetSettings.home_category_position = 'left';
@@ -220,6 +238,22 @@
     createDefaultSettings,
     parseBool,
     normalizeCategoryPosition,
+    /**
+     * WebDAV 密码三种语义：
+     *   null          → 显式清除（由清除按钮发送 null，不走此函数）
+     *   非空字符串    → 写入新密码
+     *   空字符串      → 不修改，不发送该字段（有已存密码）或设为空（无已存密码）
+     * 主设置保存（collectSettingsFromInputs）与备份前落库（saveWebdavConfig）
+     * 共用此函数，确保两处实现一致。
+     * @param {string} newPassword - 当前表单输入的密码值
+     * @param {boolean} hasStoredPassword - 服务端是否已存密码
+     * @returns {string|undefined} undefined 表示不发送该字段
+     */
+    resolveWebdavPasswordForPayload(newPassword, hasStoredPassword) {
+      if (newPassword) return newPassword;
+      if (hasStoredPassword) return undefined;
+      return '';
+    },
     applyServerSettings,
   };
 })();

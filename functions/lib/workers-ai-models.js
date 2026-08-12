@@ -1,9 +1,11 @@
+import { validateOpaqueText } from './validators';
+
 export const DEFAULT_WORKERS_AI_MODEL = '@cf/google/gemma-4-26b-a4b-it';
 
 export function normalizeWorkersAiModel(model) {
   const value = String(model ?? '').trim();
   if (!value) return '';
-  if (value.length > 200 || /[\u0000-\u001f\u007f]/.test(value)) return '';
+  if (!validateOpaqueText(value, 200).ok) return '';
   if (!value.startsWith('@cf/')) return '';
   return value;
 }

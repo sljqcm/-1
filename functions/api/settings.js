@@ -2,11 +2,79 @@
 import { isAdminAuthenticated, errorResponse, jsonResponse, markHomeCacheDirty } from '../_middleware';
 import { getSettingsKeys, normalizeSettingValueForStorage } from '../lib/settings-parser';
 import { sanitizeUrl } from '../lib/utils';
+import { validateOpaqueText } from '../lib/validators';
 
 const LAYOUT_SETTING_KEYS = new Set(getSettingsKeys());
 const AI_SETTING_KEYS = new Set(['provider', 'apiKey', 'baseUrl', 'model']);
-const IGNORED_SETTING_KEYS = new Set(['has_api_key', 'debug_api_key_info']);
+// WebDAV 配置刻意不进 SETTINGS_SCHEMA：那份 schema 会被公开接口 /api/public-config 整体吐出去
+const WEBDAV_SETTING_KEYS = new Set(['webdav_url', 'webdav_username', 'webdav_password', 'webdav_dir']);
+const IGNORED_SETTING_KEYS = new Set(['has_api_key', 'debug_api_key_info', 'has_webdav_password']);
 const ALLOWED_PROVIDERS = new Set(['workers-ai', 'gemini', 'openai']);
+
+function normalizeWebdavSettingValue(key, value) {
+  // 密码属于不透明凭据，首尾空格可能是密码本身的一部分，不能做 trim。
+  const rawText = String(value ?? '');
+  const text = key === 'webdav_password' ? rawText : rawText.trim();
+
+  if (key === 'webdav_url') {
+    if (!text) return { ok: true, value: '' };
+    const safeUrl = sanitizeUrl(text);
+    if (!safeUrl) return { ok: false, message: 'Invalid webdav_url' };
+
+    const parsed = new URL(safeUrl);
+    // WebDAV 请求会携带 Basic 凭据，备份内容还可能包含私密书签，禁止明文传输。
+    if (parsed.protocol !== 'https:') {
+      return { ok: false, message: 'webdav_url must use HTTPS' };
+    }
+    // Fetch 标准禁止请求 URL userinfo；账号密码必须使用独立字段保存，
+    // 同时避免异常信息回显 URL 时泄露内嵌凭据。
+    if (parsed.username || parsed.password) {
+      return { ok: false, message: 'webdav_url must not contain credentials' };
+    }
+
+    return { ok: true, value: safeUrl };
+  }
+
+  if (key === 'webdav_dir') {
+    if (!validateOpaqueText(text, 200).ok) {
+      return { ok: false, message: 'Invalid webdav_dir' };
+    }
+    // 反斜杠不是 WebDAV 路径分隔符，但 Windows 系服务端可能据此解析目录，
+    // 一律拒绝，避免 ..\..\x 绕过下面的路径穿越检查
+    if (text.includes('\\')) {
+      return { ok: false, message: 'Invalid webdav_dir' };
+    }
+    // 编码后的分隔符：部分服务端可能二次解码 %2f 为 /，%5c 为 \，
+    // 结合 .. 段可绕过上面的 split('/') 检查
+    if (/%(?:2f|5c)/i.test(text)) {
+      return { ok: false, message: 'Invalid webdav_dir' };
+    }
+    // 拒绝路径穿越，避免写到备份目录以外的位置
+    if (text.split('/').some(segment => segment.trim() === '..')) {
+      return { ok: false, message: 'Invalid webdav_dir' };
+    }
+    return { ok: true, value: text };
+  }
+
+  if (key === 'webdav_username') {
+    if (!validateOpaqueText(text, 256).ok) {
+      return { ok: false, message: 'Invalid webdav_username' };
+    }
+    return { ok: true, value: text };
+  }
+
+  if (key === 'webdav_password') {
+    // 首尾空格可能是密码本身的一部分，不能做 trim；
+    // validateOpaqueText 内部统一处理 String(value ?? '')，这里用它已经算好的 rawText
+    const normalized = validateOpaqueText(rawText, 512);
+    if (!normalized.ok) {
+      return { ok: false, message: 'Invalid webdav_password' };
+    }
+    return { ok: true, value: normalized.value };
+  }
+
+  return { ok: false, message: `Unknown setting key: ${key}` };
+}
 
 function normalizeAiSettingValue(key, value) {
   const text = String(value ?? '').trim();
@@ -26,14 +94,14 @@ function normalizeAiSettingValue(key, value) {
   }
 
   if (key === 'model') {
-    if (text.length > 200 || /[\u0000-\u001f\u007f]/.test(text)) {
+    if (!validateOpaqueText(text, 200).ok) {
       return { ok: false, message: 'Invalid model' };
     }
     return { ok: true, value: text };
   }
 
   if (key === 'apiKey') {
-    if (text.length > 4096 || /[\u0000-\u001f\u007f]/.test(text)) {
+    if (!validateOpaqueText(text, 4096).ok) {
       return { ok: false, message: 'Invalid apiKey' };
     }
     return { ok: true, value: text };
@@ -61,16 +129,16 @@ export async function onRequestGet(context) {
           return;
         }
 
-        if (!LAYOUT_SETTING_KEYS.has(row.key) && !AI_SETTING_KEYS.has(row.key)) {
+        if (!LAYOUT_SETTING_KEYS.has(row.key) && !AI_SETTING_KEYS.has(row.key) && !WEBDAV_SETTING_KEYS.has(row.key)) {
           return;
         }
 
         // 敏感字段不返回给前端
-        if (row.key === 'apiKey') {
+        if (row.key === 'apiKey' || row.key === 'webdav_password') {
           if (row.value && row.value.length > 0) {
-            settings['has_api_key'] = true;
+            settings[row.key === 'apiKey' ? 'has_api_key' : 'has_webdav_password'] = true;
           } else {
-            settings['has_api_key'] = false;
+            settings[row.key === 'apiKey' ? 'has_api_key' : 'has_webdav_password'] = false;
           }
         } else {
           settings[row.key] = row.value;
@@ -129,11 +197,29 @@ export async function onRequestPost(context) {
       // 不要保存临时字段
       if (IGNORED_SETTING_KEYS.has(key)) continue;
 
+      // 密码字段的三种语义靠请求形状区分，不用带内哨兵值：
+      //   null   → 显式清除
+      //   ''     → 不修改（前端每次加载都会清空密码框，不能让它覆盖已存密码）
+      //   其他   → 写入新密码
+      // 用 '__CLEAR__' 之类的字符串做哨兵会吞掉恰好等于该值的合法密码，
+      // 且前后端各写一份字面量时改一边就会把清除动作变成「把密码设成哨兵值」。
+      if (key === 'webdav_password') {
+        if (value === null) {
+          normalizedEntries.push([key, '']);
+          continue;
+        }
+        if (String(value ?? '') === '') {
+          continue;
+        }
+      }
+
       let normalized;
       if (LAYOUT_SETTING_KEYS.has(key)) {
         normalized = normalizeSettingValueForStorage(key, value);
       } else if (AI_SETTING_KEYS.has(key)) {
         normalized = normalizeAiSettingValue(key, value);
+      } else if (WEBDAV_SETTING_KEYS.has(key)) {
+        normalized = normalizeWebdavSettingValue(key, value);
       } else {
         return errorResponse(`Invalid setting key: ${key}`, 400);
       }
@@ -163,14 +249,23 @@ export async function onRequestPost(context) {
       await env.NAV_DB.batch(changedEntries.map(([key, value]) => stmt.bind(key, value)));
     }
 
-    // 保存成功后始终刷新设置缓存和首页缓存，避免旧缓存状态阻止设置生效
-    try {
-      await Promise.all([
-        env.NAV_AUTH.delete('settings_cache'),
-        markHomeCacheDirty(env, 'all'),
-      ]);
-    } catch (e) {
-      console.warn('Failed to clear caches:', e);
+    // 保存成功后刷新设置缓存和首页缓存，避免旧缓存状态阻止设置生效。
+    // 这里刻意看提交的 key 而不是 changedEntries：值没变也刷，是为了兜住
+    // 「DB 与缓存不一致导致用户怎么改都不生效」的情况。
+    // 但 WebDAV 配置不进 SETTINGS_SCHEMA，index.js 的首页查询按 getSettingsKeys()
+    // 过滤，所以这几个 key 既不在 settings_cache 里也不影响 SSR 输出 —— 只改它们时
+    // 刷缓存纯属浪费，会让访客侧白等一次重新渲染。
+    const touchesRenderedSettings = normalizedEntries.some(([key]) => !WEBDAV_SETTING_KEYS.has(key));
+
+    if (touchesRenderedSettings) {
+      try {
+        await Promise.all([
+          env.NAV_AUTH.delete('settings_cache'),
+          markHomeCacheDirty(env, 'all'),
+        ]);
+      } catch (e) {
+        console.warn('Failed to clear caches:', e);
+      }
     }
 
     return jsonResponse({

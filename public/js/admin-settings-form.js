@@ -208,6 +208,27 @@
 
     currentSettings.baseUrl = refs.baseUrlInput?.value.trim() || '';
     currentSettings.model = refs.modelNameInput?.value.trim() || '';
+
+    const backupRefs = window.AdminSettings?.backup?.getBackupRefs?.() || {};
+    currentSettings.webdav_url = backupRefs.urlInput?.value.trim() || '';
+    currentSettings.webdav_username = backupRefs.usernameInput?.value.trim() || '';
+    currentSettings.webdav_dir = backupRefs.dirInput?.value.trim() || '';
+    // 密码语义与备份前落库共用同一份判断，避免两处实现漂移
+    const resolvedWebdavPassword = (ns.defaults?.resolveWebdavPasswordForPayload?.(
+      backupRefs.passwordInput?.value || '',
+      currentSettings.has_webdav_password
+    ));
+    if (resolvedWebdavPassword !== undefined) {
+      currentSettings.webdav_password = resolvedWebdavPassword;
+      if (resolvedWebdavPassword) {
+        currentSettings.has_webdav_password = true;
+      } else {
+        currentSettings.has_webdav_password = false;
+      }
+    } else {
+      delete currentSettings.webdav_password;
+    }
+
     currentSettings.layout_hide_desc = !!refs.hideDescSwitch?.checked;
     currentSettings.layout_hide_links = !!refs.hideLinksSwitch?.checked;
     currentSettings.layout_hide_category = !!refs.hideCategorySwitch?.checked;
@@ -352,10 +373,24 @@
     }
   }
 
-  function updateUIFromSettings() {
+  function updateBackupUI() {
+    const backupRefs = window.AdminSettings?.backup?.getBackupRefs?.() || {};
+    if (!backupRefs.urlInput) return;
+
+    setValue(backupRefs.urlInput, currentSettings.webdav_url || '');
+    setValue(backupRefs.usernameInput, currentSettings.webdav_username || '');
+    setValue(backupRefs.dirInput, currentSettings.webdav_dir || '');
+
+    window.AdminSettings?.backup?.syncPasswordField?.();
+  }
+
+  function updateUIFromSettings(options = {}) {
     const refs = getRefs();
 
     updateProviderUI(refs);
+    // 备份表单只在服务端设置加载完成后回填。AI provider 等无关设置变化也会调用本函数，
+    // 若每次都回填会覆盖用户尚未保存的 WebDAV 地址、目录，并清空刚输入的密码。
+    if (options.includeBackup) updateBackupUI();
 
     setChecked(refs.hideDescSwitch, currentSettings.layout_hide_desc);
     setChecked(refs.hideLinksSwitch, currentSettings.layout_hide_links);

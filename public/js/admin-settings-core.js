@@ -22,7 +22,7 @@
       console.error('Failed to load settings', e);
     }
 
-    updateUIFromSettings();
+    updateUIFromSettings({ includeBackup: true });
   }
 
   function collectSettingsFromInputs() {
@@ -59,8 +59,8 @@
     }
   }
 
-  function updateUIFromSettings() {
-    return ns.form?.updateUIFromSettings?.();
+  function updateUIFromSettings(options) {
+    return ns.form?.updateUIFromSettings?.(options);
   }
 
   function closeModal() {
