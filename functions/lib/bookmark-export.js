@@ -79,7 +79,8 @@ export function validateBookmarkExportForImport(data) {
         }
     }
 
-    const normalizedUrls = new Set();
+    // dedupKey -> { index, name }，重复时能指出与哪条书签冲突
+    const normalizedUrls = new Map();
     for (let index = 0; index < data.sites.length; index++) {
         const site = data.sites[index] || {};
         const label = `第 ${index + 1} 个书签`;
@@ -104,10 +105,11 @@ export function validateBookmarkExportForImport(data) {
 
         // 与导入器的去重规则保持一致，否则恢复时会静默少一条。
         const dedupKey = normalizedUrl.endsWith('/') ? normalizedUrl.slice(0, -1) : normalizedUrl;
-        if (normalizedUrls.has(dedupKey)) {
-            return { ok: false, message: `${label}: URL 与其他书签重复` };
+        const existing = normalizedUrls.get(dedupKey);
+        if (existing) {
+            return { ok: false, message: `${label}「${name.value}」的 URL 与第 ${existing.index + 1} 个书签「${existing.name}」重复` };
         }
-        normalizedUrls.add(dedupKey);
+        normalizedUrls.set(dedupKey, { index, name: name.value });
     }
 
     return { ok: true };
