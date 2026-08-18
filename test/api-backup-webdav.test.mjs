@@ -232,6 +232,34 @@ test('POST /api/backup/webdav rejects legacy rows that the importer would skip',
   assert.equal(fetched, false, '会被恢复器跳过的数据不应上传');
 });
 
+test('POST /api/backup/webdav names the bookmark that exceeds the name limit', async () => {
+  const kv = createKv({ session_token: '1' });
+  const longName = `超长书签-${'长'.repeat(INPUT_LIMITS.bookmarkName)}`;
+  const db = createDb({
+    settings: { webdav_url: 'https://dav.example.com/', webdav_password: 'secret' },
+    categories: [{ id: 1, catelog: '默认', parent_id: 0 }],
+    sites: [{
+      id: 1,
+      name: longName,
+      url: 'https://legacy.example.com',
+      catelog_id: 1,
+    }],
+  });
+  let fetched = false;
+  stubFetchOnce(() => {
+    fetched = true;
+    return jsonResponse(201, {});
+  });
+
+  const response = await onRequestPost({ request: buildRequest(), env: { NAV_AUTH: kv, NAV_DB: db } });
+  const body = await response.json();
+
+  assert.equal(response.status, 413);
+  assert.ok(body.message.includes(`第 1 个书签「${longName}」`), body.message);
+  assert.match(body.message, /书签名称不能超过 120 个字符/);
+  assert.equal(fetched, false, '不可恢复的数据不应上传为成功备份');
+});
+
 test('POST /api/backup/webdav refuses backups that the importer cannot restore', async () => {
   const kv = createKv({ session_token: '1' });
   const sites = Array.from({ length: INPUT_LIMITS.importSites + 1 }, (_, i) => ({

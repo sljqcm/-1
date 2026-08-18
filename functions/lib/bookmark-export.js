@@ -20,6 +20,17 @@ function parentIdKey(value) {
     return key === '' ? '0' : key;
 }
 
+function bookmarkNameForMessage(site) {
+    const value = site?.name;
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+}
+
+function bookmarkErrorLabel(site, index) {
+    const name = bookmarkNameForMessage(site);
+    return `第 ${index + 1} 个书签${name ? `「${name}」` : '（名称为空）'}`;
+}
+
 /**
  * 按导入器的规则检查导出数据能否无损恢复。
  * 备份是灾难恢复的最后一道防线，不能在上传时说成功，到恢复时才跳过旧数据。
@@ -83,7 +94,7 @@ export function validateBookmarkExportForImport(data) {
     const normalizedUrls = new Map();
     for (let index = 0; index < data.sites.length; index++) {
         const site = data.sites[index] || {};
-        const label = `第 ${index + 1} 个书签`;
+        const label = bookmarkErrorLabel(site, index);
         const name = normalizeBookmarkName(site.name);
         const url = normalizeBookmarkUrl(site.url);
         const logo = normalizeBookmarkLogo(site.logo);
@@ -100,14 +111,14 @@ export function validateBookmarkExportForImport(data) {
 
         const siteCategoryId = idKey(site.catelog_id);
         if (siteCategoryId !== '0' && !categoryIds.has(siteCategoryId)) {
-            return { ok: false, message: `${label}引用了不存在的分类 ${siteCategoryId || '(空)'}` };
+            return { ok: false, message: `${label} 引用了不存在的分类 ${siteCategoryId || '(空)'}` };
         }
 
         // 与导入器的去重规则保持一致，否则恢复时会静默少一条。
         const dedupKey = normalizedUrl.endsWith('/') ? normalizedUrl.slice(0, -1) : normalizedUrl;
         const existing = normalizedUrls.get(dedupKey);
         if (existing) {
-            return { ok: false, message: `${label}「${name.value}」的 URL 与第 ${existing.index + 1} 个书签「${existing.name}」重复` };
+            return { ok: false, message: `${label} 的 URL 与第 ${existing.index + 1} 个书签「${existing.name}」重复` };
         }
         normalizedUrls.set(dedupKey, { index, name: name.value });
     }
