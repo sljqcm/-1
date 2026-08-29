@@ -82,12 +82,16 @@ export async function onRequestPut(context) {
     }
     const finalIsPrivate = category.is_private === 1 ? 1 : isPrivateValue;
 
-    await env.NAV_DB.prepare(`
-      INSERT INTO sites (name, url, logo, desc, catelog_id, catelog_name, sort_order, is_private)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(sanitizedName, sanitizedUrl, sanitizedLogo, sanitizedDesc, catelogId, category.catelog, sortOrderValue, finalIsPrivate).run();
-    
-    await env.NAV_DB.prepare('DELETE FROM pending_sites WHERE id = ?').bind(id).run();
+    // 入库与移出待审队列必须同时生效：D1 的 batch 是隐式单事务，失败即全部回滚。
+    // 若拆成两次 run()，DELETE 失败会让书签已入库但条目永久卡在待审队列，
+    // 且部分变更没有打脏标记，首页缓存会滞留到 TTL 耗尽。
+    await env.NAV_DB.batch([
+      env.NAV_DB.prepare(`
+        INSERT INTO sites (name, url, logo, desc, catelog_id, catelog_name, sort_order, is_private)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(sanitizedName, sanitizedUrl, sanitizedLogo, sanitizedDesc, catelogId, category.catelog, sortOrderValue, finalIsPrivate),
+      env.NAV_DB.prepare('DELETE FROM pending_sites WHERE id = ?').bind(id),
+    ]);
 
     await markHomeCacheDirty(env, finalIsPrivate ? 'private' : 'all');
 

@@ -21,6 +21,7 @@ wrangler.toml
 .github/
 .agent/
 .roo/
+.zcode/
 .shared/
 .windsurf/
 *.swp

@@ -56,6 +56,14 @@ export async function onRequestPost(context) {
     return errorResponse('Unauthorized', 401);
   }
 
+  // 导入会分多次 db.batch()/run() 提交，属于多事务写入：中途失败时数据库已部分变更。
+  // 打脏标记统一放在 finally 里执行一次，原因有两点：
+  //   1. KV 对同一个 key 限制每秒一次写入，超频的后续写入可能被静默丢弃，
+  //      因此同一请求内不能对同一个 dirty key 写两次；
+  //   2. finally 能同时覆盖成功、抛错和参数校验早返回三种出口。
+  // 这里的标志表示「数据库可能已变更」，在每次写库前置位，好让中途失败也能被标记。
+  let dbMayHaveChanged = false;
+
   try {
     // 限制请求体大小
     const contentLength = parseInt(request.headers.get('Content-Length') || '0', 10);
@@ -105,7 +113,6 @@ export async function onRequestPost(context) {
     // 在导入过程中的 SELECT ... WHERE IN (...) 查询中，
     // 将分块大小设为 50 以确保绝对安全且不影响效率。
     const BATCH_SIZE = 50;
-    let didMutate = false;
 
     // --- Category Processing ---
     const oldCatIdToNewCatIdMap = new Map(); // Maps JSON ID -> DB ID
@@ -190,16 +197,15 @@ export async function onRequestPost(context) {
                 if (isPrivate === 1 && existing.is_private !== 1) {
                     existing.is_private = 1;
                     privateCategoryIdsToPropagate.add(existing.id);
-                    didMutate = true;
                 }
                 oldCatIdToNewCatIdMap.set(getImportIdKey(cat.id), existing.id);
             } else {
                 const sortOrder = normalizeSortOrder(cat.sort_order);
+                dbMayHaveChanged = true;
                 const result = await db.prepare('INSERT INTO category (catelog, sort_order, parent_id, is_private) VALUES (?, ?, ?, ?)')
                                        .bind(catName, sortOrder, dbParentId, isPrivate)
                                        .run();
                 let newId = result.meta.last_row_id;
-                didMutate = true;
                 
                 const newCatObj = { id: newId, catelog: catName, parent_id: dbParentId, is_private: isPrivate };
                 existingDbCategories.push(newCatObj);
@@ -213,6 +219,7 @@ export async function onRequestPost(context) {
             privateCategoryIdsToPropagate.forEach(categoryId => {
                 privateStatements.push(...buildPrivateDescendantStatements(db, categoryId));
             });
+            dbMayHaveChanged = true;
             await db.batch(privateStatements);
         }
 
@@ -229,6 +236,7 @@ export async function onRequestPost(context) {
             if (existingRootCategory) {
                 oldCatIdToNewCatIdMap.set('0', existingRootCategory.id);
             } else {
+                dbMayHaveChanged = true;
                 const result = await db.prepare('INSERT INTO category (catelog, sort_order, parent_id, is_private) VALUES (?, ?, ?, ?)')
                     .bind(rootCategoryName, 9999, 0, 0)
                     .run();
@@ -240,7 +248,6 @@ export async function onRequestPost(context) {
                     is_private: 0,
                 });
                 oldCatIdToNewCatIdMap.set('0', newRootCategoryId);
-                didMutate = true;
             }
         }
     } else {
@@ -257,8 +264,8 @@ export async function onRequestPost(context) {
         if (newCategoryNames.length > 0) {
             // Legacy import doesn't have is_private info, defaults to 0
             const insertStmts = newCategoryNames.map(name => db.prepare('INSERT INTO category (catelog, is_private) VALUES (?, 0)').bind(name));
+            dbMayHaveChanged = true;
             await db.batch(insertStmts);
-            didMutate = true;
             
             for (let i = 0; i < newCategoryNames.length; i += BATCH_SIZE) {
                 const chunk = newCategoryNames.slice(i, i + BATCH_SIZE);
@@ -413,15 +420,11 @@ export async function onRequestPost(context) {
 
     if (batchStmts.length > 0) {
         // Execute in batches to respect D1 limits
+        dbMayHaveChanged = true;
         for (let i = 0; i < batchStmts.length; i += BATCH_SIZE) {
             const chunk = batchStmts.slice(i, i + BATCH_SIZE);
             await db.batch(chunk);
         }
-        didMutate = true;
-    }
-
-    if (didMutate) {
-        await markHomeCacheDirty(env, 'all');
     }
 
     let msg = `导入完成。`;
@@ -436,5 +439,12 @@ export async function onRequestPost(context) {
 
   } catch (error) {
     return errorResponse(`Failed to import config: ${error.message}`, 500);
+  } finally {
+    // 成功、抛错、早返回三种出口共用这一次打标：
+    // 失败时数据库可能已部分变更，成功时要让写入期间读到中间态的首页渲染失效。
+    // markHomeCacheDirty 内部已吞掉异常，不会掩盖原始错误或影响响应。
+    if (dbMayHaveChanged) {
+      await markHomeCacheDirty(env, 'all');
+    }
   }
 }

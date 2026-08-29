@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { onRequestPost } from '../functions/api/config/import.js';
+import { getHomeDirtyKey } from '../functions/_middleware.js';
 import { INPUT_LIMITS, IMPORT_BODY_MAX_BYTES, IMPORT_BODY_MAX_MB } from '../functions/lib/validators.js';
 
 function createKv(initialEntries = {}) {
@@ -636,4 +637,144 @@ test('import deduplicates non-root URLs with and without trailing slash', async 
   assert.match(body.message, /跳过 1 个/);
   assert.equal(siteInsertCalls.length, 1);
   assert.equal(siteInsertCalls[0].params[1], 'https://toolbox.googleapps.com/apps/dig/');
+});
+
+// 导入是多次 batch()/run() 的多事务写入，中途失败会留下部分变更。
+// 若首页脏标记只在成功路径打，KV 缓存会滞留到 TTL（30 天）耗尽。
+// 同时 KV 对同一个 key 限制每秒一次写入，所以每个请求只能打一次标记。
+function createDirtyTrackingEnv({ failSiteBatchAfter = Infinity } = {}) {
+  const events = [];
+  const store = new Map([['session_token', '1']]);
+  let nextCategoryId = 70;
+  let siteBatchCount = 0;
+
+  const env = {
+    NAV_AUTH: {
+      store,
+      async get(key) {
+        return store.get(key) ?? null;
+      },
+      async put(key, value) {
+        store.set(key, value);
+        if (key.startsWith('home_dirty_')) events.push(`dirty:${key}`);
+      },
+      async delete(key) {
+        store.delete(key);
+      },
+    },
+    NAV_DB: {
+      prepare(sql) {
+        const createStatement = (params = []) => ({
+          sql,
+          async all() {
+            if (sql.includes('FROM category')) return { results: [] };
+            if (sql.includes('SELECT url FROM sites WHERE url IN')) return { results: [] };
+            throw new Error(`Unexpected all() SQL: ${sql}`);
+          },
+          async run() {
+            events.push(`db:${sql.trim().slice(0, 24)}`);
+            if (sql.includes('INSERT INTO category')) {
+              return { success: true, meta: { last_row_id: nextCategoryId++ } };
+            }
+            return { success: true, meta: {} };
+          },
+        });
+        return {
+          bind(...params) {
+            return createStatement(params);
+          },
+          all: createStatement().all,
+          run: createStatement().run,
+        };
+      },
+      async batch(statements) {
+        // 只对书签批次计数：导入过程中还有分类 INSERT、私有属性传播等其他 batch。
+        // 匹配语句开头而不是子串，否则私有传播里的
+        // 「WITH RECURSIVE ... UPDATE sites SET is_private = 1」会被误判成书签批次。
+        const isSiteBatch = statements.some(statement => (
+          /^(INSERT INTO sites|UPDATE sites SET name=)/.test(statement.sql.trim())
+        ));
+
+        if (isSiteBatch) {
+          siteBatchCount++;
+          if (siteBatchCount > failSiteBatchAfter) {
+            throw new Error('D1 batch failed');
+          }
+        }
+
+        for (const statement of statements) await statement.run();
+      },
+    },
+  };
+
+  return { env, events };
+}
+
+function buildImportRequest(siteCount) {
+  return new Request('https://example.com/api/config/import', {
+    method: 'POST',
+    headers: { Cookie: 'admin_session=token', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      category: [{ id: 1, catelog: 'Default', parent_id: 0, is_private: 0 }],
+      sites: Array.from({ length: siteCount }, (_, i) => ({
+        name: `Site ${i + 1}`,
+        url: `https://example.com/site-${i + 1}`,
+        catelog_id: 1,
+      })),
+    }),
+  });
+}
+
+test('import marks the home cache dirty after writing, exactly once per key', async () => {
+  const { env, events } = createDirtyTrackingEnv();
+
+  const response = await onRequestPost({ request: buildImportRequest(2), env });
+  assert.equal(response.status, 201, (await response.json()).message);
+
+  // KV 同一 key 每秒只允许一次写入，重复打标的第二笔可能被静默丢弃
+  assert.equal(
+    events.filter(event => event === `dirty:${getHomeDirtyKey('public')}`).length,
+    1,
+    '同一个 dirty key 每个请求只能写一次'
+  );
+
+  // 打标必须晚于最后一次写库，否则写入期间的首页渲染会缓存中间态并 CAS 清掉标记
+  const lastDbIndex = events.map(event => event.startsWith('db:')).lastIndexOf(true);
+  const lastDirtyIndex = events.map(event => event.startsWith('dirty:')).lastIndexOf(true);
+  assert.ok(lastDbIndex >= 0, '导入应写库');
+  assert.ok(lastDirtyIndex > lastDbIndex, '打标应在最后一次数据库写入之后');
+});
+
+test('import marks the home cache dirty when a site batch fails midway', async () => {
+  // 第 1 批成功、第 2 批抛错：数据库已部分变更，脏标记必须留下
+  const { env, events } = createDirtyTrackingEnv({ failSiteBatchAfter: 1 });
+
+  const response = await onRequestPost({ request: buildImportRequest(60), env });
+  const body = await response.json();
+
+  assert.equal(response.status, 500);
+  assert.match(body.message, /D1 batch failed/);
+  assert.equal(env.NAV_AUTH.store.has(getHomeDirtyKey('public')), true);
+  assert.equal(env.NAV_AUTH.store.has(getHomeDirtyKey('private')), true);
+  assert.equal(
+    events.filter(event => event === `dirty:${getHomeDirtyKey('public')}`).length,
+    1,
+    '失败路径同样只应打一次标记'
+  );
+});
+
+test('import skips marking the home cache dirty when nothing was written', async () => {
+  // 全部书签都是重复项、又不覆盖时不会写库，此时打标只会让访客白等一次重新渲染
+  const { env, events } = createDirtyTrackingEnv();
+  const request = new Request('https://example.com/api/config/import', {
+    method: 'POST',
+    headers: { Cookie: 'admin_session=token', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category: [], sites: [{ name: 'No category', url: 'https://example.com' }] }),
+  });
+
+  const response = await onRequestPost({ request, env });
+  assert.equal(response.status, 201, (await response.json()).message);
+
+  assert.equal(events.some(event => event.startsWith('db:')), false, '不应写库');
+  assert.equal(events.some(event => event.startsWith('dirty:')), false, '没写库就不该打标');
 });
