@@ -219,6 +219,23 @@
     });
   }
 
+  let isDropdownOutsideClickBound = false;
+
+  // 下拉外部点击关闭：只在 document 上绑定一次，避免每次重建下拉都累积监听器
+  function bindDropdownOutsideClickOnce() {
+    if (isDropdownOutsideClickBound) return;
+    isDropdownOutsideClickBound = true;
+
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('.custom-dropdown-menu.show').forEach(openMenu => {
+        const wrapper = openMenu.parentElement;
+        if (!wrapper || !wrapper.contains(e.target)) {
+          openMenu.classList.remove('show');
+        }
+      });
+    });
+  }
+
   window.createCascadingDropdown = function (containerId, inputId, categoriesTree, initialValue = null, excludeId = null) {
     const container = document.getElementById(containerId);
     const input = document.getElementById(inputId);
@@ -256,11 +273,7 @@
       menu.classList.toggle('show');
     });
 
-    document.addEventListener('click', (e) => {
-      if (!container.contains(e.target)) {
-        menu.classList.remove('show');
-      }
-    });
+    bindDropdownOutsideClickOnce();
   };
 
   window.loadGlobalCategories = function () {

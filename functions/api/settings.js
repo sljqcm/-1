@@ -152,9 +152,10 @@ export async function onRequestGet(context) {
       data: settings
     });
   } catch (e) {
-    // If table doesn't exist, return empty settings or try to create it?
-    // For GET, just returning empty is fine if it doesn't exist, but we might want to initialize it.
-    if (e.message && (e.message.includes('no such table') || e.message.includes('settings'))) {
+    // 表还没建出来（首次部署 / 迁移未完成）时返回空设置，让后台显示默认值而不是报错。
+    // 这里只认 'no such table'：判断条件放宽到 'settings' 会被 SQL 语句自身的字样命中，
+    // 把超时、绑定错误之类的真实故障也伪装成「还没有配置」，故障就此静默。
+    if (e.message && e.message.includes('no such table')) {
       return jsonResponse({
         code: 200,
         data: {} // No settings yet
@@ -177,19 +178,6 @@ export async function onRequestPost(context) {
 
     if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
       return errorResponse('Invalid settings data', 400);
-    }
-
-    // Ensure table exists
-    try {
-      await env.NAV_DB.prepare(`
-            CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )
-        `).run();
-    } catch (e) {
-      console.error('Failed to ensure settings table:', e);
-      // Continue, maybe it exists or error will happen on upsert
     }
 
     const normalizedEntries = [];

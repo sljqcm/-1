@@ -522,3 +522,53 @@ test('GET /api/settings reports no password after it is cleared', async () => {
   assert.equal(response.status, 200);
   assert.equal(body.data.has_webdav_password, false, '清空后前端应显示未配置');
 });
+
+function createFailingDb(errorMessage) {
+  return {
+    prepare() {
+      return {
+        async all() {
+          throw new Error(errorMessage);
+        },
+      };
+    },
+  };
+}
+
+test('GET /api/settings returns empty settings when the table is missing', async () => {
+  const kv = createKv({ session_token: '1' });
+  const request = new Request('https://example.com/api/settings', {
+    headers: { Cookie: 'admin_session=token' },
+  });
+
+  const response = await onRequestGet({
+    request,
+    env: { NAV_AUTH: kv, NAV_DB: createFailingDb('D1_ERROR: no such table: settings') },
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(body.data, {}, '首次部署时应回退到空设置');
+});
+
+test('GET /api/settings surfaces real DB failures instead of faking empty settings', async () => {
+  // 判断条件一旦放宽到 'settings'，D1 回显 SQL 语句的错误消息就会误命中，
+  // 超时之类的真实故障会被讲成「还没有配置」，前端静默套用默认值。
+  const kv = createKv({ session_token: '1' });
+  const request = new Request('https://example.com/api/settings', {
+    headers: { Cookie: 'admin_session=token' },
+  });
+
+  const response = await onRequestGet({
+    request,
+    env: {
+      NAV_AUTH: kv,
+      NAV_DB: createFailingDb('D1_ERROR: timed out running SELECT key, value FROM settings'),
+    },
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 500);
+  assert.equal(body.code, 500);
+  assert.match(body.message, /timed out/);
+});
